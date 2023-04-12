@@ -6,12 +6,19 @@ import { Box, Button, Grid } from "@mui/material";
 import OvenLiveKit from 'ovenlivekit'
 import { useParams, useNavigate } from "react-router-dom";
 import useWebSocket, { ReadyState } from 'react-use-websocket';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import { Pause } from '@mui/icons-material';
+import PanToolIcon from '@mui/icons-material/PanTool';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import MicIcon from '@mui/icons-material/Mic';
+import MicOffIcon from '@mui/icons-material/MicOff';
 
 var React = require('react');
 
 function Main() {
     const [player, setPlayer] = useState();
-    const {liveId, userId} = useParams();
+    const { liveId, userId } = useParams();
     const [roomSocketUrl, setRoomSocketUrl] = useState("ws://110.227.200.246:6060/room/" + liveId + "/" + userId + "/false")
     const [micAllowed, setMicAllowed] = useState(false);
     const [raisedHand, setRaisedHand] = useState(false);
@@ -20,15 +27,19 @@ function Main() {
     const [mic, setMic] = useState(false);
     const [mediaStream, setMediaStream] = useState();
     const streamId = Date.now().toString();
-    const [audioPlayer,setAudioPLayers]=useState([]);
-    const interval=setInterval(checkPlayerError, 500);
+    const [audioPlayer, setAudioPLayers] = useState([]);
+    const interval = setInterval(checkPlayerError, 500);
+    const [playPause, setPlayPause] = useState(false);
+    const [muteUnmutes, setMuteUnmutes] = useState(false);
+    const [raisedHandState, setRaisedHandState] = useState(false);
 
-    function checkPlayerError()
-    {
+
+
+
+    function checkPlayerError() {
         audioPlayer.forEach(value => {
             // console.log("loop",value.getState());
-            if(value.getState()==='error')
-            {
+            if (value.getState() === 'error') {
                 value.play();
             }
         })
@@ -81,10 +92,9 @@ function Main() {
                 initializeAudioStream();
             }
             if (data.command === 'broadcastStream') {
-                console.log(data,streamId,data.userId,userId);
+                console.log(data, streamId, data.userId, userId);
 
-                if(!(data.userId.toString()===userId))
-                {
+                if (!(data.userId.toString() === userId)) {
                     setAudioStreams([...audioStreams, data.streamId]);
                 }
 
@@ -103,7 +113,7 @@ function Main() {
 
             ovenLivekit.startStreaming('wss://stream.softkitesinfo.com/app/' + streamId + '?direction=send&transport=tcp');
             stream.getVideoTracks().forEach(value => {
-                value.enabled=false;
+                value.enabled = false;
             })
             stream.getAudioTracks()[0].enabled = true;
 
@@ -113,13 +123,13 @@ function Main() {
     }
 
     function fetchMainStream() {
-        var msg = {"type": "fetchMainStream"};
+        var msg = { "type": "fetchMainStream" };
         sendRoomMessage(JSON.stringify(msg));
 
     }
 
     function fetchAudioStreams() {
-        var msg = {"type": "fetchStreams"};
+        var msg = { "type": "fetchStreams" };
         sendRoomMessage(JSON.stringify(msg));
     }
 
@@ -132,7 +142,7 @@ function Main() {
     }, [player])
 
     function loadPlayer(stream) {
-        setPlayer(OvenPlayer.create('mainStream', {
+        const videoPlayer = OvenPlayer.create('mainStream', {
             sources: [
                 {
 
@@ -149,19 +159,54 @@ function Main() {
 
 
 
-        }));
+        });
+        videoPlayer.showControls(false)
+        videoPlayer.on('stateChanged', function (data) {
+            if (data?.newstate === "playing") {
+                setPlayPause(true)
+            } else {
+                setPlayPause(false)
+            }
+
+        })
+        videoPlayer.on('mute', function (data) {
+            if (data?.mute === true) {
+                setMuteUnmutes(true)
+            } else {
+                setMuteUnmutes(false)
+            }
+
+        })
+        setPlayer(videoPlayer);
+        // setPlayer(OvenPlayer.create('mainStream', {
+        //     sources: [
+        //         {
+
+        //             label: 'label_for_webrtc',
+        //             type: 'webrtc',
+        //             file: 'wss://stream.softkitesinfo.com/app/' + stream
+
+        //         },
+        //     ],
+        //     mute: true,
+        //     autoStart: true,
+
+
+
+        // }));
 
         fetchAudioStreams();
 
     }
 
     function raiseHand() {
-        var msg = {"type": "raiseHand"};
+        setRaisedHandState(true)
+        var msg = { "type": "raiseHand" };
         sendRoomMessage(JSON.stringify(msg));
     }
 
     function addStream() {
-        var msg = {"type": "addStream", "data": streamId}
+        var msg = { "type": "addStream", "data": streamId }
         sendRoomMessage(JSON.stringify(msg));
     }
 
@@ -172,7 +217,13 @@ function Main() {
     }
 
     useEffect(() => {
-
+        navigator.mediaDevices.enumerateDevices().then(devices => {
+            devices.forEach(device => {
+                console.log('device', device);
+                // if (device.kind === "videoinput") {
+                // }
+            })
+        })
     }, []);
 
     useEffect(() => {
@@ -180,10 +231,10 @@ function Main() {
         //     const div=document.createElement("div");
         //     div.setAttribute("id", 'audio'+index);
         // } );
-        let aPlayers=[];
+        let aPlayers = [];
         audioStreams.forEach((value, index) => {
 
-           let aplayer= OvenPlayer.create('audio' + index, {
+            let aplayer = OvenPlayer.create('audio' + index, {
                 sources: [
                     {
 
@@ -197,29 +248,49 @@ function Main() {
                 ], autoStart: true,
 
                 webrtcConfig:
-                    {
-                        timeoutMaxRetry:100000,
-                        connectionTimeout: 50000
-                    }
+                {
+                    timeoutMaxRetry: 100000,
+                    connectionTimeout: 50000
+                }
 
             });
-           aPlayers.push(aplayer);
-           setAudioPLayers(aPlayers);
+            aPlayers.push(aplayer);
+            setAudioPLayers(aPlayers);
         })
 
     }, [audioStreams])
 
 
     function muteUnmuteMic() {
-        if (mic) {
-            setMic(false);
-            mediaStream.getAudioTracks()[0].enabled = false;
+        if (micAllowed) {
+            if (mic) {
+                setMic(false);
+                mediaStream.getAudioTracks()[0].enabled = false;
+            }
+            else {
+                setMic(true);
+                mediaStream.getAudioTracks()[0].enabled = true;
+            }
         }
-        else {
-            setMic(true);
-            mediaStream.getAudioTracks()[0].enabled = true;
-        }
+    }
 
+    const handlePlay = () => {
+        player?.play();
+    }
+    const handlePouse = () => {
+        player?.pause();
+    }
+    const handleVolumeOn = () => {
+        player?.setMute();
+    }
+    const handleVolumeOff = () => {
+        player?.setMute();
+    }
+    const handleMute = () => {
+        player?.setMute();
+    }
+    const handleUnMute = () => {
+        player?.setMute();
     }
 
     return (
@@ -241,7 +312,7 @@ function Main() {
                                 },
                             }}
                         >
-                            {React.createElement("div", {id: 'audio' + index})}
+                            {React.createElement("div", { id: 'audio' + index })}
                         </Box>
                         </Grid>
                     })
@@ -249,8 +320,35 @@ function Main() {
 
             </Grid>
             <Grid item>
-                <Box height="100vh" display="flex" flexDirection="column">
-                    <div id="mainStream"></div>
+                <Box height="100vh" display="flex" flexDirection="column" sx={{ backgroundColor: "black" }}>
+                    <div id="mainStream" style={{ position: "relative" }}></div>
+                    <Box sx={{ position: "absolute", bottom: "0", left: "0", right: "0", paddingBottom: "20px" }}>
+
+                        <Button onClick={raiseHand}>
+                            <PanToolIcon sx={{ color: raisedHandState ? "green" : '#cccccc' }} />
+                        </Button>
+                        {!playPause ?
+                            <Button onClick={handlePlay}><PlayArrowIcon sx={{ color: '#cccccc' }} /></Button>
+                            : <Button onClick={handlePouse}>
+                                <Pause sx={{ color: '#cccccc' }} />
+                            </Button>
+                        }
+                        {
+                            muteUnmutes ? <Button onClick={handleVolumeOn}>
+                                <VolumeUpIcon sx={{ color: '#cccccc' }} />
+                            </Button> : <Button onClick={handleVolumeOff}>
+                                <VolumeOffIcon sx={{ color: '#cccccc' }} />
+                            </Button>
+                        }
+                        <Button onClick={() => { muteUnmuteMic() }}>
+                            {
+                                mic ?
+                                    <MicIcon sx={{ color: '#cccccc' }} />
+                                    :
+                                    <MicOffIcon sx={{ color: micAllowed ? '#cccccc' : "#cccccc7a" }} />
+                            }
+                        </Button>
+                    </Box>
                 </Box>
             </Grid>
 
