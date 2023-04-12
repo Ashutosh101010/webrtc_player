@@ -2,7 +2,7 @@ import logo from './logo.svg';
 import './App.css';
 import OvenPlayer from 'ovenplayer';
 import { useEffect, useState } from "react";
-import { Box, Button, Grid } from "@mui/material";
+import { Box, Button, Grid, IconButton, Menu, MenuItem } from "@mui/material";
 import OvenLiveKit from 'ovenlivekit'
 import { useParams, useNavigate } from "react-router-dom";
 import useWebSocket, { ReadyState } from 'react-use-websocket';
@@ -13,6 +13,7 @@ import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
 var React = require('react');
 
@@ -32,6 +33,9 @@ function Main() {
     const [playPause, setPlayPause] = useState(false);
     const [muteUnmutes, setMuteUnmutes] = useState(false);
     const [raisedHandState, setRaisedHandState] = useState(false);
+    const [audioInputDevices, setAudioInputDevices] = useState([]);
+    const [menuDevice, setMenuDevice] = useState(null);
+    console.log('audioInputDevices', audioInputDevices);
 
 
 
@@ -79,7 +83,7 @@ function Main() {
         onMessage: (message) => {
             console.log(message);
             const data = JSON.parse(message.data);
-
+            console.log('datadata', data);
             if (data.type === 'streams') {
                 setAudioStreams(data.streams);
             }
@@ -220,8 +224,14 @@ function Main() {
         navigator.mediaDevices.enumerateDevices().then(devices => {
             devices.forEach(device => {
                 console.log('device', device);
-                // if (device.kind === "videoinput") {
-                // }
+
+                if (device?.InputDeviceInfo?.kind === "audioinput") {
+                    if (device?.InputDeviceInfo?.deviceId !== '' || device?.InputDeviceInfo?.deviceId !== undefined) {
+                        let newArr = []
+                        newArr.push(device)
+                        setAudioInputDevices(newArr)
+                    }
+                }
             })
         })
     }, []);
@@ -262,7 +272,7 @@ function Main() {
 
 
     function muteUnmuteMic() {
-        if (micAllowed) {
+        if (micAllowed && audioInputDevices?.length > 0) {
             if (mic) {
                 setMic(false);
                 mediaStream.getAudioTracks()[0].enabled = false;
@@ -286,12 +296,13 @@ function Main() {
     const handleVolumeOff = () => {
         player?.setMute();
     }
-    const handleMute = () => {
-        player?.setMute();
-    }
-    const handleUnMute = () => {
-        player?.setMute();
-    }
+    const handleMenu = (event) => {
+        setMenuDevice(event.currentTarget);
+    };
+
+    const handleClose = () => {
+        setMenuDevice(null);
+    };
 
     return (
         <div className="App">
@@ -347,6 +358,32 @@ function Main() {
                                     :
                                     <MicOffIcon sx={{ color: micAllowed ? '#cccccc' : "#cccccc7a" }} />
                             }
+                        </Button>
+                        <Button sx={{ marginLeft: "-40px", marginTop: "-10px" }}>
+                            <KeyboardArrowUpIcon onClick={handleMenu} sx={{ color: '#cccccc' }} fontSize='small' />
+                            <Menu
+                                id="menu-appbar"
+                                anchorEl={menuDevice}
+                                getContentAnchorEl={null}
+                                anchorOrigin={{
+                                    vertical: 'top',
+                                    horizontal: 'left',
+                                }}
+                                transformOrigin={{
+                                    vertical: 'bottom',
+                                    horizontal: 'center',
+                                }}
+                                keepMounted
+                                open={Boolean(menuDevice)}
+                                onClose={handleClose}
+                            >
+                                {
+                                    audioInputDevices?.length > 0 && audioInputDevices.map((option, i) => {
+                                        return <MenuItem onClick={handleClose} key={i}>{option?.InputDeviceInfo?.kind}</MenuItem>
+                                    })
+                                }
+
+                            </Menu>
                         </Button>
                     </Box>
                 </Box>
