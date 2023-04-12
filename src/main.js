@@ -20,7 +20,7 @@ var React = require('react');
 function Main() {
     const [player, setPlayer] = useState();
     const { liveId, userId } = useParams();
-    const [roomSocketUrl, setRoomSocketUrl] = useState("ws://110.227.200.246:6060/room/" + liveId + "/" + userId + "/false")
+    const [roomSocketUrl, setRoomSocketUrl] = useState("ws://192.168.0.242:6060/room/" + liveId + "/" + userId + "/false")
     const [micAllowed, setMicAllowed] = useState(false);
     const [raisedHand, setRaisedHand] = useState(false);
     const [audioStreams, setAudioStreams] = useState([]);
@@ -35,7 +35,7 @@ function Main() {
     const [raisedHandState, setRaisedHandState] = useState(false);
     const [audioInputDevices, setAudioInputDevices] = useState([]);
     const [menuDevice, setMenuDevice] = useState(null);
-    console.log('audioInputDevices', audioInputDevices);
+
 
 
 
@@ -95,6 +95,12 @@ function Main() {
                 setMicAllowed(true);
                 initializeAudioStream();
             }
+            if(data.type === 'micDisAllowed')
+            {
+                setMicAllowed(false);
+                removeStream();
+
+            }
             if (data.command === 'broadcastStream') {
                 console.log(data, streamId, data.userId, userId);
 
@@ -107,6 +113,13 @@ function Main() {
 
         }
     });
+
+    function removeStream()
+    {
+        setMic(false);
+        mediaStream.getAudioTracks()[0].enabled = false;
+        ovenLivekit.stopStreaming();
+    }
 
     function initializeAudioStream() {
         ovenLivekit.getUserMedia({
@@ -222,12 +235,11 @@ function Main() {
 
     useEffect(() => {
         navigator.mediaDevices.enumerateDevices().then(devices => {
+            let newArr = [];
             devices.forEach(device => {
-                console.log('device', device);
+                if (device) {
+                    if ((device.deviceId !== '' || device.deviceId !== undefined) && device.kind=='audioinput') {
 
-                if (device?.InputDeviceInfo?.kind === "audioinput") {
-                    if (device?.InputDeviceInfo?.deviceId !== '' || device?.InputDeviceInfo?.deviceId !== undefined) {
-                        let newArr = []
                         newArr.push(device)
                         setAudioInputDevices(newArr)
                     }
@@ -282,6 +294,14 @@ function Main() {
                 mediaStream.getAudioTracks()[0].enabled = true;
             }
         }
+    }
+
+    function handleSelectedAudioDevice(value)
+    {
+        let device = value;
+        setMenuDevice(null);
+
+
     }
 
     const handlePlay = () => {
@@ -379,7 +399,7 @@ function Main() {
                             >
                                 {
                                     audioInputDevices?.length > 0 && audioInputDevices.map((option, i) => {
-                                        return <MenuItem onClick={handleClose} key={i}>{option?.InputDeviceInfo?.kind}</MenuItem>
+                                        return <MenuItem onClick={()=>handleSelectedAudioDevice(option)} key={i}>{option.label}</MenuItem>
                                     })
                                 }
 
