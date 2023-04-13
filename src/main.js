@@ -407,17 +407,10 @@ function Main() {
                 }
             </Grid>
             <Grid item>
-                <Box height="100vh" display="flex" flexDirection="column" sx={{ backgroundColor: "black" }} 
-                // onClick={e => {
-                //      setStyle({display: 'block'});
-                //  }} 
-                 onClick={handleShowHide}
-                //  onMouseLeave={e => {
-                //     setStyle({display: 'none'})
-                // }}
-                >
+                <Box height="100vh" display="flex" flexDirection="column" sx={{ backgroundColor: "black" }}>
+                    <Box onClick={handleShowHide}>
                     <div id="mainStream" style={{ position: "relative" }}></div>
-                   
+                    </Box>
                     <Box sx={{ position: "absolute", bottom: "0", left: "0", right: "0", paddingBottom: "20px" }}>
                     <div style={{display : style ? "block" : "none"}}>
                         <Button onClick={raiseHand}>
