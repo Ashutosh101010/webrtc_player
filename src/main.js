@@ -1,10 +1,9 @@
-import logo from './logo.svg';
 import './App.css';
 import OvenPlayer from 'ovenplayer';
 import { useEffect, useState } from "react";
-import { Box, Button, Grid, IconButton, Menu, MenuItem } from "@mui/material";
+import { Box, Button, Grid, Menu, MenuItem } from "@mui/material";
 import OvenLiveKit from 'ovenlivekit'
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import useWebSocket, { ReadyState } from 'react-use-websocket';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { Pause } from '@mui/icons-material';
@@ -14,13 +13,18 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import MainModal from './MainModal';
+import axios from 'axios';
+import ErrorModal from './ErrorModal';
 
 var React = require('react');
+
+const STUDENT_DETAIL_URL = "http://110.227.200.246:6060/student/fetch-details";
 
 function Main() {
     const [player, setPlayer] = useState();
     const { liveId, userId } = useParams();
-    const [roomSocketUrl, setRoomSocketUrl] = useState("ws://192.168.0.242:6060/room/" + liveId + "/" + userId + "/false")
+    const [roomSocketUrl, setRoomSocketUrl] = useState("ws://110.227.200.246:6060/room/" + liveId + "/" + userId + "/false")
     const [micAllowed, setMicAllowed] = useState(false);
     const [raisedHand, setRaisedHand] = useState(false);
     const [audioStreams, setAudioStreams] = useState([]);
@@ -35,10 +39,26 @@ function Main() {
     const [raisedHandState, setRaisedHandState] = useState(false);
     const [audioInputDevices, setAudioInputDevices] = useState([]);
     const [menuDevice, setMenuDevice] = useState(null);
+    const [authUser, setAuthUser] = useState('');
 
-
-
-
+    useEffect(()=>{
+        StudentFetchDetail()
+    }, [])
+    
+    const  StudentFetchDetail = async() => {
+        try {
+            const response = await axios.get(
+                STUDENT_DETAIL_URL,
+                {
+                    headers: { "X-Auth": "eyJ1c2VySWQiOjcsInRpbWVzdGFtcCI6MTY4MDAwMTY1NTU1OCwiZXhwaXJ5IjoxNzEwMDAxNjU1NTU4fQ==" }
+                  }
+              );
+              setAuthUser(response?.data)
+              return response;
+        } catch (error) {
+          console.error(error);
+        }
+      }
 
     function checkPlayerError() {
         audioPlayer.forEach(value => {
@@ -76,14 +96,12 @@ function Main() {
 
         onOpen: () => {
             console.log('WebSocket room connection established.');
-            fetchMainStream();
+            // fetchMainStream();
 
         }
         ,
         onMessage: (message) => {
-            console.log(message);
             const data = JSON.parse(message.data);
-            console.log('datadata', data);
             if (data.type === 'streams') {
                 setAudioStreams(data.streams);
             }
@@ -95,8 +113,7 @@ function Main() {
                 setMicAllowed(true);
                 initializeAudioStream();
             }
-            if(data.type === 'micDisAllowed')
-            {
+            if (data.type === 'micDisAllowed') {
                 setMicAllowed(false);
                 removeStream();
 
@@ -114,8 +131,7 @@ function Main() {
         }
     });
 
-    function removeStream()
-    {
+    function removeStream() {
         setMic(false);
         mediaStream.getAudioTracks()[0].enabled = false;
         ovenLivekit.stopStreaming();
@@ -140,6 +156,7 @@ function Main() {
     }
 
     function fetchMainStream() {
+        console.log('fetchMainStream');
         var msg = { "type": "fetchMainStream" };
         sendRoomMessage(JSON.stringify(msg));
 
@@ -173,7 +190,7 @@ function Main() {
             ],
             mute: true,
             autoStart: true,
-
+            showBigPlayButton: false
 
 
         });
@@ -238,7 +255,7 @@ function Main() {
             let newArr = [];
             devices.forEach(device => {
                 if (device) {
-                    if ((device.deviceId !== '' || device.deviceId !== undefined) && device.kind=='audioinput') {
+                    if ((device.deviceId !== '' || device.deviceId !== undefined) && device.kind == 'audioinput') {
 
                         newArr.push(device)
                         setAudioInputDevices(newArr)
@@ -296,8 +313,7 @@ function Main() {
         }
     }
 
-    function handleSelectedAudioDevice(value)
-    {
+    function handleSelectedAudioDevice(value) {
         let device = value;
         setMenuDevice(null);
 
@@ -326,9 +342,10 @@ function Main() {
 
     return (
         <div className="App">
-
+            {
+                authUser?.errorCode === 0 ? <>
+            <MainModal fetchMainStream={fetchMainStream} />
             <Grid container>
-
                 {
                     audioStreams.map((value, index) => {
                         console.log("audio" + index);
@@ -348,7 +365,6 @@ function Main() {
                         </Grid>
                     })
                 }
-
             </Grid>
             <Grid item>
                 <Box height="100vh" display="flex" flexDirection="column" sx={{ backgroundColor: "black" }}>
@@ -379,6 +395,8 @@ function Main() {
                                     <MicOffIcon sx={{ color: micAllowed ? '#cccccc' : "#cccccc7a" }} />
                             }
                         </Button>
+                        {
+                            audioInputDevices?.length > 0 ? 
                         <Button sx={{ marginLeft: "-40px", marginTop: "-10px" }}>
                             <KeyboardArrowUpIcon onClick={handleMenu} sx={{ color: '#cccccc' }} fontSize='small' />
                             <Menu
@@ -399,12 +417,14 @@ function Main() {
                             >
                                 {
                                     audioInputDevices?.length > 0 && audioInputDevices.map((option, i) => {
-                                        return <MenuItem onClick={()=>handleSelectedAudioDevice(option)} key={i}>{option.label}</MenuItem>
+                                        return <MenuItem onClick={() => handleSelectedAudioDevice(option)} key={i}>{option.label}</MenuItem>
                                     })
                                 }
 
                             </Menu>
                         </Button>
+                        : ""
+                    }
                     </Box>
                 </Box>
             </Grid>
@@ -413,7 +433,8 @@ function Main() {
             {/*        onClick={() => muteUnmute()}>{player != undefined && player.getMute() ? "UnMute" : "Mute"}</Button>*/}
             {/*<Button variant="contained" onClick={() => muteUnmuteMic()}>{mic ? "micon" : "micoff"}</Button>*/}
             {/*<Button variant="contained" onClick={() => raiseHand()}>raise doubt</Button>*/}
-
+            </> : <ErrorModal />
+            }
         </div>
     );
 }

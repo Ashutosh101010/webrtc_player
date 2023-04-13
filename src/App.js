@@ -9,7 +9,6 @@ function App() {
   return (
           <div className="app">
             <Routes>
-
                 <Route
                     path="/player/:liveId/:userId"
                     element={<Main />}
