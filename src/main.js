@@ -3,7 +3,7 @@ import OvenPlayer from 'ovenplayer';
 import { useEffect, useState } from "react";
 import { Backdrop, Box, Button, Grid, Menu, MenuItem } from "@mui/material";
 import OvenLiveKit from 'ovenlivekit'
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import useWebSocket, { ReadyState } from 'react-use-websocket';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { Pause } from '@mui/icons-material';
@@ -26,6 +26,8 @@ const STUDENT_DETAIL_URL = "http://110.227.200.246:6060/student/fetch-details";
 function Main() {
     const [player, setPlayer] = useState();
     const { liveId, userId } = useParams();
+    const location = useLocation();
+    const token = location.search.split("?token=").join('');
     const [roomSocketUrl, setRoomSocketUrl] = useState("ws://110.227.200.246:6060/room/" + liveId + "/" + userId + "/false")
     const [micAllowed, setMicAllowed] = useState(false);
     const [raisedHand, setRaisedHand] = useState(false);
@@ -43,33 +45,33 @@ function Main() {
     const [menuDevice, setMenuDevice] = useState(null);
     const [authUser, setAuthUser] = useState('');
     const [settingMenu, setSettingMenu] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [style, setStyle] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [style, setStyle] = useState(false);
 
-  const playerQuality = [
-    "720p", "480p", "360p"
-  ]
+    const playerQuality = [
+        "720p", "480p", "360p"
+    ]
 
-    useEffect(()=>{
+    useEffect(() => {
         StudentFetchDetail()
     }, [])
-    
-    const  StudentFetchDetail = async() => {
+
+    const StudentFetchDetail = async () => {
         setIsLoading(true)
         try {
             const response = await axios.get(
                 STUDENT_DETAIL_URL,
                 {
-                    headers: { "X-Auth": "eyJ1c2VySWQiOjcsInRpbWVzdGFtcCI6MTY4MDAwMTY1NTU1OCwiZXhwaXJ5IjoxNzEwMDAxNjU1NTU4fQ==" }
-                  }
-              );
-              setAuthUser(response?.data)
-              setIsLoading(false)
-              return response;
+                    headers: { "X-Auth": token }
+                }
+            );
+            setAuthUser(response?.data)
+            setIsLoading(false)
+            return response;
         } catch (error) {
-          console.error(error);
+            console.error(error);
         }
-      }
+    }
 
     function checkPlayerError() {
         audioPlayer.forEach(value => {
@@ -194,7 +196,7 @@ function Main() {
                     // Set the type to 'webrtc'
                     type: 'webrtc',
                     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.softkitesinfo.com/app/' + stream+"_720"
+                    file: 'wss://stream.softkitesinfo.com/app/' + stream + "_720"
 
                 },
                 {
@@ -203,7 +205,7 @@ function Main() {
                     // Set the type to 'webrtc'
                     type: 'webrtc',
                     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.softkitesinfo.com/app/' + stream+"_480"
+                    file: 'wss://stream.softkitesinfo.com/app/' + stream + "_480"
 
                 },
                 {
@@ -212,7 +214,7 @@ function Main() {
                     // Set the type to 'webrtc'
                     type: 'webrtc',
                     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.softkitesinfo.com/app/' + stream+"_360"
+                    file: 'wss://stream.softkitesinfo.com/app/' + stream + "_360"
 
                 },
             ],
@@ -366,17 +368,17 @@ function Main() {
     const handleClose = () => {
         setMenuDevice(null);
     };
-    const handleSetting = (event) =>{
+    const handleSetting = (event) => {
         setSettingMenu(event.currentTarget);
     }
-    const handleSettingClose = () =>{
+    const handleSettingClose = () => {
         setSettingMenu(null)
     }
-    const handleSettingMenu = (value) =>{
+    const handleSettingMenu = (value) => {
         player.setCurrentSource(value)
         setSettingMenu(null)
     }
-    const handleShowHide = () =>{
+    const handleShowHide = () => {
         setStyle(!style)
     }
 
@@ -384,135 +386,135 @@ function Main() {
         <div className="App">
             {
                 authUser?.errorCode === 0 ? <>
-            <MainModal fetchMainStream={fetchMainStream} />
-            <Grid container>
-                {
-                    audioStreams.map((value, index) => {
-                        console.log("audio" + index);
-                        return <Grid item key={index}> <Box
-                            sx={{
-                                width: 0,
-                                height: 0,
-                                backgroundColor: 'primary.dark',
-                                '&:hover': {
-                                    backgroundColor: 'primary.main',
-                                    opacity: [0.9, 0.8, 0.7],
-                                },
-                            }}
-                        >
-                            {React.createElement("div", { id: 'audio' + index })}
+                    <MainModal fetchMainStream={fetchMainStream} />
+                    <Grid container>
+                        {
+                            audioStreams.map((value, index) => {
+                                console.log("audio" + index);
+                                return <Grid item key={index}> <Box
+                                    sx={{
+                                        width: 0,
+                                        height: 0,
+                                        backgroundColor: 'primary.dark',
+                                        '&:hover': {
+                                            backgroundColor: 'primary.main',
+                                            opacity: [0.9, 0.8, 0.7],
+                                        },
+                                    }}
+                                >
+                                    {React.createElement("div", { id: 'audio' + index })}
+                                </Box>
+                                </Grid>
+                            })
+                        }
+                    </Grid>
+                    <Grid item>
+                        <Box height="100vh" display="flex" flexDirection="column" sx={{ backgroundColor: "black" }}>
+                            <Box onClick={handleShowHide}>
+                                <div id="mainStream" style={{ position: "relative" }}></div>
+                            </Box>
+                            <Box sx={{ position: "absolute", bottom: "0", left: "0", right: "0", paddingBottom: "20px" }}>
+                                <div style={{ display: style ? "block" : "none" }}>
+                                    <Button onClick={raiseHand}>
+                                        <PanToolIcon sx={{ color: raisedHandState ? "green" : '#cccccc' }} />
+                                    </Button>
+                                    {!playPause ?
+                                        <Button onClick={handlePlay}><PlayArrowIcon sx={{ color: '#cccccc' }} /></Button>
+                                        : <Button onClick={handlePouse}>
+                                            <Pause sx={{ color: '#cccccc' }} />
+                                        </Button>
+                                    }
+                                    {
+                                        muteUnmutes ? <Button onClick={handleVolumeOn}>
+                                            <VolumeUpIcon sx={{ color: '#cccccc' }} />
+                                        </Button> : <Button onClick={handleVolumeOff}>
+                                            <VolumeOffIcon sx={{ color: '#cccccc' }} />
+                                        </Button>
+                                    }
+                                    <Button onClick={() => { muteUnmuteMic() }}>
+                                        {
+                                            mic ?
+                                                <MicIcon sx={{ color: '#cccccc' }} />
+                                                :
+                                                <MicOffIcon sx={{ color: micAllowed ? '#cccccc' : "#cccccc7a" }} />
+                                        }
+                                    </Button>
+                                    {
+                                        audioInputDevices?.length > 0 ?
+                                            <Button sx={{ marginLeft: "-40px", marginTop: "-10px" }}>
+                                                <KeyboardArrowUpIcon onClick={handleMenu} sx={{ color: '#cccccc' }} fontSize='small' />
+                                                <Menu
+                                                    id="menu-appbar"
+                                                    anchorEl={menuDevice}
+                                                    getContentAnchorEl={null}
+                                                    anchorOrigin={{
+                                                        vertical: 'top',
+                                                        horizontal: 'left',
+                                                    }}
+                                                    transformOrigin={{
+                                                        vertical: 'bottom',
+                                                        horizontal: 'center',
+                                                    }}
+                                                    keepMounted
+                                                    open={Boolean(menuDevice)}
+                                                    onClose={handleClose}
+                                                >
+                                                    {
+                                                        audioInputDevices?.length > 0 && audioInputDevices.map((option, i) => {
+                                                            return <MenuItem onClick={() => handleSelectedAudioDevice(option)} key={i}>{option.label}</MenuItem>
+                                                        })
+                                                    }
+
+                                                </Menu>
+                                            </Button>
+                                            : ""
+                                    }
+                                    <Button>
+                                        <SettingsIcon sx={{ color: '#cccccc' }} onClick={handleSetting} />
+                                        <Menu
+                                            id="menu-appbar"
+                                            anchorEl={settingMenu}
+                                            getContentAnchorEl={null}
+                                            anchorOrigin={{
+                                                vertical: 'top',
+                                                horizontal: 'left',
+                                            }}
+                                            transformOrigin={{
+                                                vertical: 'bottom',
+                                                horizontal: 'center',
+                                            }}
+                                            keepMounted
+                                            open={Boolean(settingMenu)}
+                                            onClose={handleSettingClose}
+                                        >
+                                            {
+                                                playerQuality?.map((option, i) => {
+                                                    return <MenuItem key={i} onClick={() => handleSettingMenu(i)}>{option}</MenuItem>
+                                                })
+                                            }
+                                        </Menu>
+                                    </Button>
+                                </div>
+                            </Box>
                         </Box>
-                        </Grid>
-                    })
-                }
-            </Grid>
-            <Grid item>
-                <Box height="100vh" display="flex" flexDirection="column" sx={{ backgroundColor: "black" }}>
-                    <Box onClick={handleShowHide}>
-                    <div id="mainStream" style={{ position: "relative" }}></div>
-                    </Box>
-                    <Box sx={{ position: "absolute", bottom: "0", left: "0", right: "0", paddingBottom: "20px" }}>
-                    <div style={{display : style ? "block" : "none"}}>
-                        <Button onClick={raiseHand}>
-                            <PanToolIcon sx={{ color: raisedHandState ? "green" : '#cccccc' }} />
-                        </Button>
-                        {!playPause ?
-                            <Button onClick={handlePlay}><PlayArrowIcon sx={{ color: '#cccccc' }} /></Button>
-                            : <Button onClick={handlePouse}>
-                                <Pause sx={{ color: '#cccccc' }} />
-                            </Button>
-                        }
-                        {
-                            muteUnmutes ? <Button onClick={handleVolumeOn}>
-                                <VolumeUpIcon sx={{ color: '#cccccc' }} />
-                            </Button> : <Button onClick={handleVolumeOff}>
-                                <VolumeOffIcon sx={{ color: '#cccccc' }} />
-                            </Button>
-                        }
-                        <Button onClick={() => { muteUnmuteMic() }}>
-                            {
-                                mic ?
-                                    <MicIcon sx={{ color: '#cccccc' }} />
-                                    :
-                                    <MicOffIcon sx={{ color: micAllowed ? '#cccccc' : "#cccccc7a" }} />
-                            }
-                        </Button>
-                        {
-                            audioInputDevices?.length > 0 ? 
-                        <Button sx={{ marginLeft: "-40px", marginTop: "-10px" }}>
-                            <KeyboardArrowUpIcon onClick={handleMenu} sx={{ color: '#cccccc' }} fontSize='small' />
-                            <Menu
-                                id="menu-appbar"
-                                anchorEl={menuDevice}
-                                getContentAnchorEl={null}
-                                anchorOrigin={{
-                                    vertical: 'top',
-                                    horizontal: 'left',
-                                }}
-                                transformOrigin={{
-                                    vertical: 'bottom',
-                                    horizontal: 'center',
-                                }}
-                                keepMounted
-                                open={Boolean(menuDevice)}
-                                onClose={handleClose}
-                            >
-                                {
-                                    audioInputDevices?.length > 0 && audioInputDevices.map((option, i) => {
-                                        return <MenuItem onClick={() => handleSelectedAudioDevice(option)} key={i}>{option.label}</MenuItem>
-                                    })
-                                }
+                    </Grid>
 
-                            </Menu>
-                        </Button>
-                        : ""
+                    {/*<Button variant="contained"*/}
+                    {/*        onClick={() => muteUnmute()}>{player != undefined && player.getMute() ? "UnMute" : "Mute"}</Button>*/}
+                    {/*<Button variant="contained" onClick={() => muteUnmuteMic()}>{mic ? "micon" : "micoff"}</Button>*/}
+                    {/*<Button variant="contained" onClick={() => raiseHand()}>raise doubt</Button>*/}
+                </> : <>
+                    {
+                        isLoading ? <Backdrop
+                            sx={{ color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+                            open={isLoading}
+                        >
+                            <Circle color={"#fafafa"} size={50} />
+                        </Backdrop> : <ErrorModal />
                     }
-                     <Button>
-                     <SettingsIcon sx={{ color: '#cccccc' }} onClick={handleSetting} />
-                            <Menu
-                                id="menu-appbar"
-                                anchorEl={settingMenu}
-                                getContentAnchorEl={null}
-                                anchorOrigin={{
-                                    vertical: 'top',
-                                    horizontal: 'left',
-                                }}
-                                transformOrigin={{
-                                    vertical: 'bottom',
-                                    horizontal: 'center',
-                                }}
-                                keepMounted
-                                open={Boolean(settingMenu)}
-                                onClose={handleSettingClose}
-                            >
-                                {
-                                    playerQuality?.map((option, i)=>{
-                                        return<MenuItem key={i} onClick={()=>handleSettingMenu(i)}>{option}</MenuItem>
-                                    })
-                                }
-                            </Menu>
-                        </Button>
-                        </div>
-                    </Box>
-                </Box>
-            </Grid>
+                </>
+            }
 
-            {/*<Button variant="contained"*/}
-            {/*        onClick={() => muteUnmute()}>{player != undefined && player.getMute() ? "UnMute" : "Mute"}</Button>*/}
-            {/*<Button variant="contained" onClick={() => muteUnmuteMic()}>{mic ? "micon" : "micoff"}</Button>*/}
-            {/*<Button variant="contained" onClick={() => raiseHand()}>raise doubt</Button>*/}
-            </> : <>
-            {
-                isLoading ? <Backdrop
-                sx={{ color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1 }}
-                open={isLoading}
-              >
-                <Circle color={"#fafafa"} size={50} />
-              </Backdrop> : <ErrorModal />
-            }
-            </>
-            }
-              
         </div>
     );
 }
