@@ -21,14 +21,15 @@ import ErrorModal from './ErrorModal';
 
 var React = require('react');
 
-const STUDENT_DETAIL_URL = "http://110.227.200.246:6060/student/fetch-details";
+const STUDENT_DETAIL_URL = "https://api.softkitesinfo.com/student/fetch-details";
 
 function Main() {
     const [player, setPlayer] = useState();
     const { liveId, userId } = useParams();
     const location = useLocation();
     const token = location.search.split("?token=").join('');
-    const [roomSocketUrl, setRoomSocketUrl] = useState("ws://110.227.200.246:6060/room/" + liveId + "/" + userId + "/false")
+    const [roomSocketUrl, setRoomSocketUrl] = useState("wss://api.softkitesinfo.com/ws/room/" + liveId + "/" + userId + "/false")
+    // const [roomSocketUrl, setRoomSocketUrl] = useState("ws://192.168.1.13:6060/room/" + liveId + "/" + userId + "/false")
     const [micAllowed, setMicAllowed] = useState(false);
     const [raisedHand, setRaisedHand] = useState(false);
     const [audioStreams, setAudioStreams] = useState([]);
@@ -415,7 +416,7 @@ function Main() {
                             </Box>
                             <Box sx={{ position: "absolute", bottom: "0", left: "0", right: "0", paddingBottom: "20px" }}>
                                 <div style={{ display: style ? "block" : "none" }}>
-                                    <Button onClick={raiseHand}>
+                                    <Button onClick={()=>{raiseHand()}}>
                                         <PanToolIcon sx={{ color: raisedHandState ? "green" : '#cccccc' }} />
                                     </Button>
                                     {!playPause ?
