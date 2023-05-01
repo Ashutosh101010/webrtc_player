@@ -25,11 +25,12 @@ const STUDENT_DETAIL_URL = "https://api.softkitesinfo.com/student/fetch-details"
 
 function Main() {
     const [player, setPlayer] = useState();
-    const { liveId, userId } = useParams();
+    const {liveId, userId} = useParams();
     const location = useLocation();
     const token = location.search.split("?token=").join('');
     const [roomSocketUrl, setRoomSocketUrl] = useState("wss://api.softkitesinfo.com/ws/room/" + liveId + "/" + userId + "/false")
-    // const [roomSocketUrl, setRoomSocketUrl] = useState("ws://192.168.1.13:6060/room/" + liveId + "/" + userId + "/false")
+    // const [roomSocketUrl, setRoomSocketUrl] = useState("ws://192.168.1.13:6060/room/" + liveId + "/" + userId +
+    // "/false")
     const [micAllowed, setMicAllowed] = useState(false);
     const [raisedHand, setRaisedHand] = useState(false);
     const [audioStreams, setAudioStreams] = useState([]);
@@ -38,7 +39,6 @@ function Main() {
     const [mediaStream, setMediaStream] = useState();
     const streamId = Date.now().toString();
     const [audioPlayer, setAudioPLayers] = useState([]);
-    const interval = setInterval(checkPlayerError, 500);
     const [playPause, setPlayPause] = useState(false);
     const [muteUnmutes, setMuteUnmutes] = useState(false);
     const [raisedHandState, setRaisedHandState] = useState(false);
@@ -48,11 +48,16 @@ function Main() {
     const [settingMenu, setSettingMenu] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [style, setStyle] = useState(false);
-
+    const [audioPlayerRefresh,setAudioPlayerRefresh]=useState(false);
     const playerQuality = [
         "720p", "480p", "360p"
     ]
 
+    useEffect(() => {
+        checkPlayerError();
+        const timer = setTimeout(() => setAudioPlayerRefresh(!audioPlayerRefresh), 1000);
+
+    },[audioPlayerRefresh])
     useEffect(() => {
         StudentFetchDetail()
     }, [])
@@ -63,7 +68,7 @@ function Main() {
             const response = await axios.get(
                 STUDENT_DETAIL_URL,
                 {
-                    headers: { "X-Auth": token }
+                    headers: {"X-Auth": token}
                 }
             );
             setAuthUser(response?.data)
@@ -82,6 +87,7 @@ function Main() {
             }
         })
     }
+
     let ovenLivekit = OvenLiveKit.create({
         callbacks: {
             error: function (error) {
@@ -126,6 +132,7 @@ function Main() {
             if (data.type === 'micAllowed') {
                 setMicAllowed(true);
                 initializeAudioStream();
+                setRaisedHandState(false);
             }
             if (data.type === 'micDisAllowed') {
                 setMicAllowed(false);
@@ -170,13 +177,13 @@ function Main() {
     }
 
     function fetchMainStream() {
-        var msg = { "type": "fetchMainStream" };
+        var msg = {"type": "fetchMainStream"};
         sendRoomMessage(JSON.stringify(msg));
 
     }
 
     function fetchAudioStreams() {
-        var msg = { "type": "fetchStreams" };
+        var msg = {"type": "fetchStreams"};
         sendRoomMessage(JSON.stringify(msg));
     }
 
@@ -225,10 +232,12 @@ function Main() {
             expandFullScreenUI: false
         });
         videoPlayer.showControls(false)
+        videoPlayer.setMute(false);
         videoPlayer.on('stateChanged', function (data) {
             if (data?.newstate === "playing") {
                 setPlayPause(true)
-            } else {
+            }
+            else {
                 setPlayPause(false)
             }
 
@@ -236,7 +245,8 @@ function Main() {
         videoPlayer.on('mute', function (data) {
             if (data?.mute === true) {
                 setMuteUnmutes(true)
-            } else {
+            }
+            else {
                 setMuteUnmutes(false)
             }
 
@@ -256,7 +266,6 @@ function Main() {
         //     autoStart: true,
 
 
-
         // }));
 
         fetchAudioStreams();
@@ -265,12 +274,12 @@ function Main() {
 
     function raiseHand() {
         setRaisedHandState(true)
-        var msg = { "type": "raiseHand" };
+        var msg = {"type": "raiseHand"};
         sendRoomMessage(JSON.stringify(msg));
     }
 
     function addStream() {
-        var msg = { "type": "addStream", "data": streamId }
+        var msg = {"type": "addStream", "data": streamId}
         sendRoomMessage(JSON.stringify(msg));
     }
 
@@ -282,6 +291,7 @@ function Main() {
 
     useEffect(() => {
         navigator.mediaDevices.enumerateDevices().then(devices => {
+            console.log(devices);
             let newArr = [];
             devices.forEach(device => {
                 if (device) {
@@ -317,10 +327,10 @@ function Main() {
                 ], autoStart: true,
 
                 webrtcConfig:
-                {
-                    timeoutMaxRetry: 100000,
-                    connectionTimeout: 50000
-                }
+                    {
+                        timeoutMaxRetry: 100000,
+                        connectionTimeout: 50000
+                    }
 
             });
             aPlayers.push(aplayer);
@@ -331,7 +341,8 @@ function Main() {
 
 
     function muteUnmuteMic() {
-        if (micAllowed && audioInputDevices?.length > 0) {
+        console.log(mic, micAllowed, audioInputDevices);
+        if (micAllowed && audioInputDevices.length > 0) {
             if (mic) {
                 setMic(false);
                 mediaStream.getAudioTracks()[0].enabled = false;
@@ -357,10 +368,10 @@ function Main() {
         player?.pause();
     }
     const handleVolumeOn = () => {
-        player?.setMute();
+        player?.setMute(false);
     }
     const handleVolumeOff = () => {
-        player?.setMute();
+        player?.setMute(true);
     }
     const handleMenu = (event) => {
         setMenuDevice(event.currentTarget);
@@ -387,7 +398,7 @@ function Main() {
         <div className="App">
             {
                 authUser?.errorCode === 0 ? <>
-                    <MainModal fetchMainStream={fetchMainStream} />
+                    <MainModal fetchMainStream={fetchMainStream}/>
                     <Grid container>
                         {
                             audioStreams.map((value, index) => {
@@ -403,75 +414,80 @@ function Main() {
                                         },
                                     }}
                                 >
-                                    {React.createElement("div", { id: 'audio' + index })}
+                                    {React.createElement("div", {id: 'audio' + index})}
                                 </Box>
                                 </Grid>
                             })
                         }
                     </Grid>
                     <Grid item>
-                        <Box height="100vh" display="flex" flexDirection="column" sx={{ backgroundColor: "black" }}>
+                        <Box height="100vh" display="flex" flexDirection="column" sx={{backgroundColor: "black"}}>
                             <Box onClick={handleShowHide}>
-                                <div id="mainStream" style={{ position: "relative" }}></div>
+                                <div id="mainStream" style={{position: "relative"}}></div>
                             </Box>
-                            <Box sx={{ position: "absolute", bottom: "0", left: "0", right: "0", paddingBottom: "20px" }}>
-                                <div style={{ display: style ? "block" : "none" }}>
-                                    <Button onClick={()=>{raiseHand()}}>
-                                        <PanToolIcon sx={{ color: raisedHandState ? "green" : '#cccccc' }} />
+                            <Box sx={{position: "absolute", bottom: "0", left: "0", right: "0", paddingBottom: "20px"}}>
+                                <div style={{display: style ? "block" : "none"}}>
+                                    <Button onClick={() => {raiseHand()}}>
+                                        <PanToolIcon sx={{color: raisedHandState ? "green" : '#cccccc'}}/>
                                     </Button>
                                     {!playPause ?
-                                        <Button onClick={handlePlay}><PlayArrowIcon sx={{ color: '#cccccc' }} /></Button>
+                                        <Button onClick={handlePlay}><PlayArrowIcon sx={{color: '#cccccc'}}/></Button>
                                         : <Button onClick={handlePouse}>
-                                            <Pause sx={{ color: '#cccccc' }} />
+                                            <Pause sx={{color: '#cccccc'}}/>
                                         </Button>
                                     }
                                     {
                                         muteUnmutes ? <Button onClick={handleVolumeOn}>
-                                            <VolumeUpIcon sx={{ color: '#cccccc' }} />
+                                            <VolumeOffIcon sx={{color: '#cccccc'}}/>
                                         </Button> : <Button onClick={handleVolumeOff}>
-                                            <VolumeOffIcon sx={{ color: '#cccccc' }} />
+                                            <VolumeUpIcon sx={{color: '#cccccc'}}/>
                                         </Button>
                                     }
                                     <Button onClick={() => { muteUnmuteMic() }}>
                                         {
                                             mic ?
-                                                <MicIcon sx={{ color: '#cccccc' }} />
+                                                <MicIcon sx={{color: '#cccccc'}}/>
                                                 :
-                                                <MicOffIcon sx={{ color: micAllowed ? '#cccccc' : "#cccccc7a" }} />
+                                                <MicOffIcon sx={{color: micAllowed ? '#cccccc' : "#cccccc7a"}}/>
                                         }
                                     </Button>
-                                    {
-                                        audioInputDevices?.length > 0 ?
-                                            <Button sx={{ marginLeft: "-40px", marginTop: "-10px" }}>
-                                                <KeyboardArrowUpIcon onClick={handleMenu} sx={{ color: '#cccccc' }} fontSize='small' />
-                                                <Menu
-                                                    id="menu-appbar"
-                                                    anchorEl={menuDevice}
-                                                    getContentAnchorEl={null}
-                                                    anchorOrigin={{
-                                                        vertical: 'top',
-                                                        horizontal: 'left',
-                                                    }}
-                                                    transformOrigin={{
-                                                        vertical: 'bottom',
-                                                        horizontal: 'center',
-                                                    }}
-                                                    keepMounted
-                                                    open={Boolean(menuDevice)}
-                                                    onClose={handleClose}
-                                                >
-                                                    {
-                                                        audioInputDevices?.length > 0 && audioInputDevices.map((option, i) => {
-                                                            return <MenuItem onClick={() => handleSelectedAudioDevice(option)} key={i}>{option.label}</MenuItem>
-                                                        })
-                                                    }
+                                    {/*{*/}
+                                    {/*    audioInputDevices?.length > 0 ?*/}
+                                    {/*        <Button sx={{marginLeft: "0px", marginTop: "-10px"}}>*/}
+                                    {/*            <KeyboardArrowUpIcon onClick={handleMenu} sx={{color: '#cccccc'}}*/}
+                                    {/*                                 fontSize='small'/>*/}
+                                    {/*            <Menu*/}
+                                    {/*                id="menu-appbar"*/}
+                                    {/*                anchorEl={menuDevice}*/}
+                                    {/*                getContentAnchorEl={null}*/}
+                                    {/*                anchorOrigin={{*/}
+                                    {/*                    vertical: 'top',*/}
+                                    {/*                    horizontal: 'left',*/}
+                                    {/*                }}*/}
+                                    {/*                transformOrigin={{*/}
+                                    {/*                    vertical: 'bottom',*/}
+                                    {/*                    horizontal: 'center',*/}
+                                    {/*                }}*/}
+                                    {/*                keepMounted*/}
+                                    {/*                open={Boolean(menuDevice)}*/}
+                                    {/*                onClose={handleClose}*/}
+                                    {/*            >*/}
+                                    {/*                {*/}
+                                    {/*                    audioInputDevices?.length > 0 && audioInputDevices.map((option, i) => {*/}
+                                    {/*                        return <MenuItem*/}
+                                    {/*                            onClick={() => handleSelectedAudioDevice(option)}*/}
+                                    {/*                            key={i}>{option.label === '' ?option.deviceId==='default'?*/}
+                                    {/*                                option.deviceId.toLocaleUpperCase():*/}
+                                    {/*                            'Device ' + (i + 1) : option.label}</MenuItem>*/}
+                                    {/*                    })*/}
+                                    {/*                }*/}
 
-                                                </Menu>
-                                            </Button>
-                                            : ""
-                                    }
+                                    {/*            </Menu>*/}
+                                    {/*        </Button>*/}
+                                    {/*        : ""*/}
+                                    {/*}*/}
                                     <Button>
-                                        <SettingsIcon sx={{ color: '#cccccc' }} onClick={handleSetting} />
+                                        <SettingsIcon sx={{color: '#cccccc'}} onClick={handleSetting}/>
                                         <Menu
                                             id="menu-appbar"
                                             anchorEl={settingMenu}
@@ -490,7 +506,8 @@ function Main() {
                                         >
                                             {
                                                 playerQuality?.map((option, i) => {
-                                                    return <MenuItem key={i} onClick={() => handleSettingMenu(i)}>{option}</MenuItem>
+                                                    return <MenuItem key={i}
+                                                                     onClick={() => handleSettingMenu(i)}>{option}</MenuItem>
                                                 })
                                             }
                                         </Menu>
@@ -507,11 +524,11 @@ function Main() {
                 </> : <>
                     {
                         isLoading ? <Backdrop
-                            sx={{ color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+                            sx={{color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1}}
                             open={isLoading}
                         >
-                            <Circle color={"#fafafa"} size={50} />
-                        </Backdrop> : <ErrorModal />
+                            <Circle color={"#fafafa"} size={50}/>
+                        </Backdrop> : <ErrorModal/>
                     }
                 </>
             }
