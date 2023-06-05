@@ -84,7 +84,7 @@ function Main() {
     function checkPlayerError() {
         Array.from(audioStreamMap.keys()).map(key => {
             let value = audioStreamMap.get(parseInt(key));
-            if (value !== undefined && value.getState() === 'error') {
+            if (value !== undefined && value!=='' &&  value.getState() === 'error') {
                 value.play();
             }
         });
