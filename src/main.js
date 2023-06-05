@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Backdrop, Box, Button, Grid, Menu, MenuItem } from "@mui/material";
 import OvenLiveKit from 'ovenlivekit'
 import { useLocation, useParams } from "react-router-dom";
-import useWebSocket, { ReadyState } from 'react-use-websocket';
+import useWebSocket from 'react-use-websocket';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { Pause } from '@mui/icons-material';
 import PanToolIcon from '@mui/icons-material/PanTool';
@@ -12,7 +12,6 @@ import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { Circle } from "styled-spinkit";
 import MainModal from './MainModal';
@@ -37,7 +36,7 @@ function Main() {
     const [mainStreamId, setMainStreamId] = useState();
     const [mic, setMic] = useState(false);
     const [mediaStream, setMediaStream] = useState();
-    const streamId = Date.now().toString();
+    const [streamId, setStreamId] = useState(Date.now().toString());
     const [audioPlayer, setAudioPLayers] = useState([]);
     const [playPause, setPlayPause] = useState(false);
     const [muteUnmutes, setMuteUnmutes] = useState(false);
@@ -48,16 +47,19 @@ function Main() {
     const [settingMenu, setSettingMenu] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [style, setStyle] = useState(false);
-    const [audioPlayerRefresh,setAudioPlayerRefresh]=useState(false);
+    const [audioPlayerRefresh, setAudioPlayerRefresh] = useState(false);
+    const [audioStreamMap, setAudioStreamMap] = useState(new Map());
+    const [currentStreams, setCurrentStreams] = useState([]);
     const playerQuality = [
         "720p", "480p", "360p"
     ]
 
     useEffect(() => {
-        checkPlayerError();
-        const timer = setTimeout(() => setAudioPlayerRefresh(!audioPlayerRefresh), 1000);
 
-    },[audioPlayerRefresh])
+        checkPlayerError();
+        // const timer = setTimeout(() => checkPlayerError(), 1000);
+
+    }, [])
     useEffect(() => {
         StudentFetchDetail()
     }, [])
@@ -80,13 +82,14 @@ function Main() {
     }
 
     function checkPlayerError() {
-        audioPlayer.forEach(value => {
-            // console.log("loop",value.getState());
-            if (value.getState() === 'error') {
+        Array.from(audioStreamMap.keys()).map(key => {
+            let value = audioStreamMap.get(parseInt(key));
+            if (value !== undefined && value.getState() === 'error') {
                 value.play();
             }
-        })
+        });
     }
+
 
     let ovenLivekit = OvenLiveKit.create({
         callbacks: {
@@ -117,12 +120,20 @@ function Main() {
         onOpen: () => {
             console.log('WebSocket room connection established.');
             // fetchMainStream();
-
+            initializeAudioStream();
         }
         ,
         onMessage: (message) => {
             const data = JSON.parse(message.data);
             if (data.type === 'streams') {
+                let streams = [...currentStreams];
+                data.streams.forEach(value => {
+                    if (!streams.includes(value.toString())) {
+                        console.log('push');
+                        streams.push(value.toString());
+                        setCurrentStreams(streams);
+                    }
+                });
                 setAudioStreams(data.streams);
             }
             if (data.type === 'mainStream') {
@@ -131,7 +142,7 @@ function Main() {
             }
             if (data.type === 'micAllowed') {
                 setMicAllowed(true);
-                initializeAudioStream();
+
                 setRaisedHandState(false);
             }
             if (data.type === 'micDisAllowed') {
@@ -194,6 +205,38 @@ function Main() {
 
 
     }, [player])
+
+    useEffect(() => {
+        Array.from(audioStreamMap.keys()).map((key) => {
+                if (audioStreamMap.get(key) === '') {
+                    let tempMap = audioStreamMap;
+                    let aplayer = OvenPlayer.create('audio' + key, {
+                        sources: [
+                            {
+
+                                label: 'label_for_webrtc',
+                                // Set the type to 'webrtc'
+                                type: 'webrtc',
+                                // Set the file to WebRTC Signaling URL with OvenMediaEngine
+                                file: 'wss://stream.softkitesinfo.com/app/' + key
+
+                            }
+                        ], autoStart: true,
+
+                        webrtcConfig:
+                            {
+                                timeoutMaxRetry: 100000,
+                                connectionTimeout: 50000
+                            }
+
+                    });
+
+                    tempMap.set(parseInt(key), aplayer);
+                    setAudioStreamMap(tempMap);
+                }
+            }
+        );
+    }, [audioStreamMap])
 
     function loadPlayer(stream) {
         const videoPlayer = OvenPlayer.create('mainStream', {
@@ -306,37 +349,21 @@ function Main() {
     }, []);
 
     useEffect(() => {
-        // audioStreams.forEach((value,index) =>{
-        //     const div=document.createElement("div");
-        //     div.setAttribute("id", 'audio'+index);
-        // } );
-        let aPlayers = [];
+        let tempMap = audioStreamMap.size > 0 ? audioStreamMap : new Map();
         audioStreams.forEach((value, index) => {
+            if ((tempMap.get(parseInt(value)) === undefined) && parseInt(value) !== parseInt(streamId)) {
 
-            let aplayer = OvenPlayer.create('audio' + index, {
-                sources: [
-                    {
+                tempMap.set(parseInt(value), '');
+                setAudioStreamMap(tempMap);
+            }
+            else if ((tempMap.get(parseInt(value)) !== undefined) && (!audioStreams.includes(value))) {
+                tempMap.get(parseInt(value)).remove();
+                tempMap.delete(parseInt(value));
+                setAudioStreamMap(tempMap);
+            }
 
-                        label: 'label_for_webrtc',
-                        // Set the type to 'webrtc'
-                        type: 'webrtc',
-                        // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                        file: 'wss://stream.softkitesinfo.com/app/' + value
-
-                    }
-                ], autoStart: true,
-
-                webrtcConfig:
-                    {
-                        timeoutMaxRetry: 100000,
-                        connectionTimeout: 50000
-                    }
-
-            });
-            aPlayers.push(aplayer);
-            setAudioPLayers(aPlayers);
-        })
-
+        });
+        checkPlayerError();
     }, [audioStreams])
 
 
@@ -352,13 +379,6 @@ function Main() {
                 mediaStream.getAudioTracks()[0].enabled = true;
             }
         }
-    }
-
-    function handleSelectedAudioDevice(value) {
-        let device = value;
-        setMenuDevice(null);
-
-
     }
 
     const handlePlay = () => {
@@ -401,22 +421,28 @@ function Main() {
                     <MainModal fetchMainStream={fetchMainStream}/>
                     <Grid container>
                         {
-                            audioStreams.map((value, index) => {
-                                console.log("audio" + index);
-                                return <Grid item key={index}> <Box
-                                    sx={{
-                                        width: 0,
-                                        height: 0,
-                                        backgroundColor: 'primary.dark',
-                                        '&:hover': {
-                                            backgroundColor: 'primary.main',
-                                            opacity: [0.9, 0.8, 0.7],
-                                        },
-                                    }}
-                                >
-                                    {React.createElement("div", {id: 'audio' + index})}
-                                </Box>
-                                </Grid>
+                            Array.from(audioStreamMap.keys()).map((key, index) => {
+                                if (audioStreamMap.get(parseInt(key)) === '') {
+                                    return <Grid item key={index}> <Box
+                                        sx={{
+                                            width: 0,
+                                            height: 0,
+                                            backgroundColor: 'primary.dark',
+                                            '&:hover': {
+                                                backgroundColor: 'primary.main',
+                                                opacity: [0.9, 0.8, 0.7],
+                                            },
+                                        }}
+                                    >
+                                        {/*<div id={'audio' + key}></div>*/}
+                                        {React.createElement("div", {id: 'audio' + parseInt(key)})}
+
+                                    </Box>
+                                    </Grid>
+
+
+                                }
+
                             })
                         }
                     </Grid>
