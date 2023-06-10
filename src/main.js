@@ -51,8 +51,9 @@ function Main() {
     const [audioStreamMap, setAudioStreamMap] = useState(new Map());
     const [currentStreams, setCurrentStreams] = useState([]);
     const playerQuality = [
-        "720p", "480p", "360p"
+        "1080p","720p", "480p", "360p"
     ]
+    const [selectedQuality,setSelectedQuality]=useState("1080p");
 
     useEffect(() => {
 
@@ -243,6 +244,15 @@ function Main() {
             sources: [
                 {
 
+                    label: '1080p',
+                    // Set the type to 'webrtc'
+                    type: 'webrtc',
+                    // Set the file to WebRTC Signaling URL with OvenMediaEngine
+                    file: 'wss://stream.softkitesinfo.com/app/' + stream + "_1080"
+
+                },
+                {
+
                     label: '720p',
                     // Set the type to 'webrtc'
                     type: 'webrtc',
@@ -406,7 +416,8 @@ function Main() {
     const handleSettingClose = () => {
         setSettingMenu(null)
     }
-    const handleSettingMenu = (value) => {
+    const handleSettingMenu = (value,option) => {
+        setSelectedQuality(option);
         player.setCurrentSource(value)
         setSettingMenu(null)
     }
@@ -532,8 +543,10 @@ function Main() {
                                         >
                                             {
                                                 playerQuality?.map((option, i) => {
-                                                    return <MenuItem key={i}
-                                                                     onClick={() => handleSettingMenu(i)}>{option}</MenuItem>
+                                                    return <Box sx={{ backgroundColor: selectedQuality===option? 'rgba(25,118,210,0.4)':'transparent'}}>
+                                                        <MenuItem key={i}
+                                                                  onClick={() => handleSettingMenu(i,option)}>{option}</MenuItem></Box>
+
                                                 })
                                             }
                                         </Menu>
