@@ -50,10 +50,11 @@ function Main() {
     const [audioPlayerRefresh, setAudioPlayerRefresh] = useState(false);
     const [audioStreamMap, setAudioStreamMap] = useState(new Map());
     const [currentStreams, setCurrentStreams] = useState([]);
+    const [available,setAvailable]=useState(false);
     const playerQuality = [
-        "1080p","720p", "480p", "360p"
+        "1080p", "720p", "480p", "360p"
     ]
-    const [selectedQuality,setSelectedQuality]=useState("1080p");
+    const [selectedQuality, setSelectedQuality] = useState("1080p");
 
     useEffect(() => {
 
@@ -85,7 +86,7 @@ function Main() {
     function checkPlayerError() {
         Array.from(audioStreamMap.keys()).map(key => {
             let value = audioStreamMap.get(parseInt(key));
-            if (value !== undefined && value!=='' &&  value.getState() === 'error') {
+            if (value !== undefined && value !== '' && value.getState() === 'error') {
                 value.play();
             }
         });
@@ -100,7 +101,7 @@ function Main() {
             connected: function (event) {
                 console.log("event", event);
                 // ovenLivekit.inputStream.getAudioTracks()[0].enabled;
-                addStream();
+
 
             },
             connectionClosed: function (type, event) {
@@ -108,6 +109,12 @@ function Main() {
             },
             iceStateChange: function (state) {
                 console.log("state", state);
+                if(state==='connected')
+                {
+
+                    addStream();
+                    setAvailable(true);
+                }
             }
         }
     });
@@ -142,13 +149,19 @@ function Main() {
                 loadPlayer(data.stream);
             }
             if (data.type === 'micAllowed') {
-                setMicAllowed(true);
+                if(available)
+                {
+                    setMic(false);
+                    setMicAllowed(true);
 
-                setRaisedHandState(false);
+                    setRaisedHandState(false);
+                }
+
             }
-            if (data.type === 'micDisAllowed') {
+            if (data.type === 'micDisallowed') {
+                setMic(false);
                 setMicAllowed(false);
-                removeStream();
+                // removeStream();
 
             }
             if (data.command === 'broadcastStream') {
@@ -181,7 +194,7 @@ function Main() {
             stream.getVideoTracks().forEach(value => {
                 value.enabled = false;
             })
-            stream.getAudioTracks()[0].enabled = true;
+            stream.getAudioTracks()[0].enabled = false;
 
             // addStream();
 
@@ -279,7 +292,7 @@ function Main() {
 
                 },
             ],
-            mute: true,
+            mute: false,
             autoStart: true,
             showBigPlayButton: false,
             expandFullScreenUI: false
@@ -377,6 +390,21 @@ function Main() {
     }, [audioStreams])
 
 
+    useEffect(() => {
+        if(mediaStream!==undefined)
+        {
+            if(mediaStream.getAudioTracks()[0]!==undefined)
+            {
+                if (mic) {
+                    mediaStream.getAudioTracks()[0].enabled = true;
+                }
+                else if (!mic) {
+                    mediaStream.getAudioTracks()[0].enabled = false;
+                }
+            }
+        }
+    }, [mic])
+
     function muteUnmuteMic() {
         console.log(mic, micAllowed, audioInputDevices);
         if (micAllowed && audioInputDevices.length > 0) {
@@ -416,7 +444,7 @@ function Main() {
     const handleSettingClose = () => {
         setSettingMenu(null)
     }
-    const handleSettingMenu = (value,option) => {
+    const handleSettingMenu = (value, option) => {
         setSelectedQuality(option);
         player.setCurrentSource(value)
         setSettingMenu(null)
@@ -482,10 +510,11 @@ function Main() {
                                     }
                                     <Button onClick={() => { muteUnmuteMic() }}>
                                         {
+                                           !micAllowed? <MicOffIcon sx={{color: "#cccccc7a"}}/>:
                                             mic ?
                                                 <MicIcon sx={{color: '#cccccc'}}/>
                                                 :
-                                                <MicOffIcon sx={{color: micAllowed ? '#cccccc' : "#cccccc7a"}}/>
+                                                <MicOffIcon sx={{color:  '#cccccc' }}/>
                                         }
                                     </Button>
                                     {/*{*/}
@@ -543,9 +572,10 @@ function Main() {
                                         >
                                             {
                                                 playerQuality?.map((option, i) => {
-                                                    return <Box sx={{ backgroundColor: selectedQuality===option? 'rgba(25,118,210,0.4)':'transparent'}}>
+                                                    return <Box
+                                                        sx={{backgroundColor: selectedQuality === option ? 'rgba(25,118,210,0.4)' : 'transparent'}}>
                                                         <MenuItem key={i}
-                                                                  onClick={() => handleSettingMenu(i,option)}>{option}</MenuItem></Box>
+                                                                  onClick={() => handleSettingMenu(i, option)}>{option}</MenuItem></Box>
 
                                                 })
                                             }
