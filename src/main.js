@@ -52,9 +52,9 @@ function Main() {
     const [currentStreams, setCurrentStreams] = useState([]);
     const [available,setAvailable]=useState(false);
     const playerQuality = [
-        "1080p", "720p", "480p", "360p"
+        "4k","1080p", "720p", "480p", "360p"
     ]
-    const [selectedQuality, setSelectedQuality] = useState("1080p");
+    const [selectedQuality, setSelectedQuality] = useState("480p");
 
     useEffect(() => {
 
@@ -84,12 +84,17 @@ function Main() {
     }
 
     function checkPlayerError() {
-        Array.from(audioStreamMap.keys()).map(key => {
-            let value = audioStreamMap.get(parseInt(key));
-            if (value !== undefined && value !== '' && value.getState() === 'error') {
-                value.play();
-            }
-        });
+        try {
+            Array.from(audioStreamMap.keys()).map(key => {
+                let value = audioStreamMap.get(parseInt(key));
+                if (value !== undefined && value !== '' && value.getState() !== 'playing') {
+                    value.play();
+                }
+            });
+        }catch (e)
+        {
+
+        }
     }
 
 
@@ -190,7 +195,7 @@ function Main() {
         }).then(function (stream) {
             setMediaStream(stream);
 
-            ovenLivekit.startStreaming('wss://stream.softkitesinfo.com/app/' + streamId + '?direction=send&transport=tcp');
+            ovenLivekit.startStreaming('wss://audio.classiolabs.com/app/' + streamId + '?direction=send&transport=tcp');
             stream.getVideoTracks().forEach(value => {
                 value.enabled = false;
             })
@@ -221,35 +226,7 @@ function Main() {
     }, [player])
 
     useEffect(() => {
-        Array.from(audioStreamMap.keys()).map((key) => {
-                if (audioStreamMap.get(key) === '') {
-                    let tempMap = audioStreamMap;
-                    let aplayer = OvenPlayer.create('audio' + key, {
-                        sources: [
-                            {
 
-                                label: 'label_for_webrtc',
-                                // Set the type to 'webrtc'
-                                type: 'webrtc',
-                                // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                                file: 'wss://stream.softkitesinfo.com/app/' + key
-
-                            }
-                        ], autoStart: true,
-
-                        webrtcConfig:
-                            {
-                                timeoutMaxRetry: 100000,
-                                connectionTimeout: 50000
-                            }
-
-                    });
-
-                    tempMap.set(parseInt(key), aplayer);
-                    setAudioStreamMap(tempMap);
-                }
-            }
-        );
     }, [audioStreamMap])
 
     function loadPlayer(stream) {
@@ -257,11 +234,20 @@ function Main() {
             sources: [
                 {
 
+                    label: '4k',
+                    // Set the type to 'webrtc'
+                    type: 'webrtc',
+                    // Set the file to WebRTC Signaling URL with OvenMediaEngine
+                    file: 'wss://stream.classiolabs.com/app/' + stream
+
+                },
+                {
+
                     label: '1080p',
                     // Set the type to 'webrtc'
                     type: 'webrtc',
                     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.softkitesinfo.com/app/' + stream + "_1080"
+                    file: 'wss://stream.classiolabs.com/app/' + stream + "_1080"
 
                 },
                 {
@@ -270,7 +256,7 @@ function Main() {
                     // Set the type to 'webrtc'
                     type: 'webrtc',
                     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.softkitesinfo.com/app/' + stream + "_720"
+                    file: 'wss://stream.classiolabs.com/app/' + stream + "_720"
 
                 },
                 {
@@ -279,7 +265,7 @@ function Main() {
                     // Set the type to 'webrtc'
                     type: 'webrtc',
                     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.softkitesinfo.com/app/' + stream + "_480"
+                    file: 'wss://stream.classiolabs.com/app/' + stream + "_480"
 
                 },
                 {
@@ -288,17 +274,18 @@ function Main() {
                     // Set the type to 'webrtc'
                     type: 'webrtc',
                     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.softkitesinfo.com/app/' + stream + "_360"
+                    file: 'wss://stream.classiolabs.com/app/' + stream + "_360"
 
                 },
             ],
-            mute: false,
             autoStart: true,
             showBigPlayButton: false,
             expandFullScreenUI: false
         });
+        videoPlayer.setVolume(100)
         videoPlayer.showControls(false)
-        videoPlayer.setMute(false);
+        videoPlayer.setCurrentSource(3)
+        // videoPlayer.setMute(false);
         videoPlayer.on('stateChanged', function (data) {
             if (data?.newstate === "playing") {
                 setPlayPause(true)
@@ -370,7 +357,7 @@ function Main() {
             })
         })
     }, []);
-
+    //
     useEffect(() => {
         let tempMap = audioStreamMap.size > 0 ? audioStreamMap : new Map();
         audioStreams.forEach((value, index) => {
@@ -387,6 +374,40 @@ function Main() {
 
         });
         checkPlayerError();
+        try{
+            Array.from(audioStreamMap.keys()).map((key) => {
+                    if (audioStreamMap.get(key) === '') {
+                        let tempMap = audioStreamMap;
+                        let aplayer = OvenPlayer.create('audio' + key, {
+                            sources: [
+                                {
+
+                                    label: 'label_for_webrtc',
+                                    // Set the type to 'webrtc'
+                                    type: 'webrtc',
+                                    // Set the file to WebRTC Signaling URL with OvenMediaEngine
+                                    file: 'wss://audio.classiolabs.com/app/' + key
+
+                                }
+                            ], autoStart: true,
+
+                            webrtcConfig:
+                                {
+                                    timeoutMaxRetry: 100000,
+                                    connectionTimeout: 50000
+                                }
+
+                        });
+
+                        tempMap.set(parseInt(key), aplayer);
+                        setAudioStreamMap(tempMap);
+                    }
+                }
+            );
+        }catch (e)
+        {
+
+        }
     }, [audioStreams])
 
 
