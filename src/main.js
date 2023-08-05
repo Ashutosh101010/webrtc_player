@@ -52,9 +52,9 @@ function Main() {
     const [currentStreams, setCurrentStreams] = useState([]);
     const [available,setAvailable]=useState(false);
     const playerQuality = [
-        "4k","1080p", "720p", "480p", "360p"
+       "Auto", "4k","1080p", "720p", "480p", "360p"
     ]
-    const [selectedQuality, setSelectedQuality] = useState("480p");
+    const [selectedQuality, setSelectedQuality] = useState("Auto");
 
     useEffect(() => {
 
@@ -238,53 +238,54 @@ function Main() {
                     // Set the type to 'webrtc'
                     type: 'webrtc',
                     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.classiolabs.com/app/' + stream
-
+                    file: 'wss://stream.classiolabs.com/app/'+stream
                 },
-                {
-
-                    label: '1080p',
-                    // Set the type to 'webrtc'
-                    type: 'webrtc',
-                    // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.classiolabs.com/app/' + stream + "_1080"
-
-                },
-                {
-
-                    label: '720p',
-                    // Set the type to 'webrtc'
-                    type: 'webrtc',
-                    // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.classiolabs.com/app/' + stream + "_720"
-
-                },
-                {
-
-                    label: '480p',
-                    // Set the type to 'webrtc'
-                    type: 'webrtc',
-                    // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.classiolabs.com/app/' + stream + "_480"
-
-                },
-                {
-
-                    label: '360p',
-                    // Set the type to 'webrtc'
-                    type: 'webrtc',
-                    // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.classiolabs.com/app/' + stream + "_360"
-
-                },
+                // {
+                //
+                //     label: '1080p',
+                //     // Set the type to 'webrtc'
+                //     type: 'webrtc',
+                //     // Set the file to WebRTC Signaling URL with OvenMediaEngine
+                //     file: 'wss://stream.classiolabs.com/app/' + stream + "_1080"
+                //
+                // },
+                // {
+                //
+                //     label: '720p',
+                //     // Set the type to 'webrtc'
+                //     type: 'webrtc',
+                //     // Set the file to WebRTC Signaling URL with OvenMediaEngine
+                //     file: 'wss://stream.classiolabs.com/app/' + stream + "_720"
+                //
+                // },
+                // {
+                //
+                //     label: '480p',
+                //     // Set the type to 'webrtc'
+                //     type: 'webrtc',
+                //     // Set the file to WebRTC Signaling URL with OvenMediaEngine
+                //     file: 'wss://stream.classiolabs.com/app/' + stream + "_480"
+                //
+                // },
+                // {
+                //
+                //     label: '360p',
+                //     // Set the type to 'webrtc'
+                //     type: 'webrtc',
+                //     // Set the file to WebRTC Signaling URL with OvenMediaEngine
+                //     file: 'wss://stream.classiolabs.com/app/' + stream + "_360"
+                //
+                // },
             ],
+            mute:false,
             autoStart: true,
             showBigPlayButton: false,
             expandFullScreenUI: false
         });
         videoPlayer.setVolume(100)
         videoPlayer.showControls(false)
-        videoPlayer.setCurrentSource(3)
+        videoPlayer.setAutoQuality(true);
+        // videoPlayer.setCurrentSource(3)
         // videoPlayer.setMute(false);
         videoPlayer.on('stateChanged', function (data) {
             if (data?.newstate === "playing") {
@@ -336,11 +337,22 @@ function Main() {
         sendRoomMessage(JSON.stringify(msg));
     }
 
-    function muteUnmute() {
-
-        player.setMute(!player.getMute());
-
-    }
+    // function muteUnmute() {
+    //
+    //     player.setMute(!player.getMute());
+    //     try {
+    //         Array.from(audioStreamMap.keys()).map(key => {
+    //             let value = audioStreamMap.get(parseInt(key));
+    //             if (value !== undefined && value !== '' && value.getState() !== 'playing') {
+    //                 value.play();
+    //             }
+    //         });
+    //     }catch (e)
+    //     {
+    //
+    //     }
+    //
+    // }
 
     useEffect(() => {
         navigator.mediaDevices.enumerateDevices().then(devices => {
@@ -448,9 +460,31 @@ function Main() {
     }
     const handleVolumeOn = () => {
         player?.setMute(false);
+        try {
+            Array.from(audioStreamMap.keys()).map(key => {
+                let value = audioStreamMap.get(parseInt(key));
+                if (value !== undefined && value !== '' && value.getState() !== 'playing') {
+                    value.setMute(false);
+                }
+            });
+        }catch (e)
+        {
+
+        }
     }
     const handleVolumeOff = () => {
         player?.setMute(true);
+        try {
+            Array.from(audioStreamMap.keys()).map(key => {
+                let value = audioStreamMap.get(parseInt(key));
+                if (value !== undefined && value !== '' && value.getState() !== 'playing') {
+                    value.setMute(true);
+                }
+            });
+        }catch (e)
+        {
+
+        }
     }
     const handleMenu = (event) => {
         setMenuDevice(event.currentTarget);
@@ -460,6 +494,7 @@ function Main() {
         setMenuDevice(null);
     };
     const handleSetting = (event) => {
+        // console.log('quality',player.getQualityLevels());
         setSettingMenu(event.currentTarget);
     }
     const handleSettingClose = () => {
@@ -467,7 +502,20 @@ function Main() {
     }
     const handleSettingMenu = (value, option) => {
         setSelectedQuality(option);
-        player.setCurrentSource(value)
+        // player.setCurrentSource(value)
+        if(option==='Auto')
+        {
+            player.setAutoQuality(true);
+        }
+        else{
+            player.getQualityLevels().forEach((object,index)=>{
+                if(object.label===option)
+                {
+                    player.setCurrentQuality(index);
+                }
+            });
+        }
+
         setSettingMenu(null)
     }
     const handleShowHide = () => {
