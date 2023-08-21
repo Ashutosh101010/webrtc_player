@@ -55,11 +55,11 @@ function Main() {
        "Auto", "4k","1080p", "720p", "480p", "360p"
     ]
     const [selectedQuality, setSelectedQuality] = useState("Auto");
-
+    const [pause,setPause]=useState(false);
     useEffect(() => {
 
         checkPlayerError();
-        // const timer = setTimeout(() => checkPlayerError(), 1000);
+        // const timer = setTimeout(() => checkVideo(), 1000);
 
     }, [])
     useEffect(() => {
@@ -83,7 +83,27 @@ function Main() {
         }
     }
 
+    function checkVideo()
+    {
+        try{
+            if(player.getState()==='error')
+            {
+                loadPlayer(mainStreamId);
+            }
+            if(player.getState()!=='playing')
+            {
+                if(!pause)
+                {
+                    player.play();
+                }
+            }
+        }catch (e)
+        {
+            console.log(e);
+        }
+    }
     function checkPlayerError() {
+
         try {
             Array.from(audioStreamMap.keys()).map(key => {
                 let value = audioStreamMap.get(parseInt(key));
@@ -138,6 +158,7 @@ function Main() {
         ,
         onMessage: (message) => {
             const data = JSON.parse(message.data);
+            checkVideo();
             if (data.type === 'streams') {
                 let streams = [...currentStreams];
                 data.streams.forEach(value => {
@@ -238,44 +259,9 @@ function Main() {
                     // Set the type to 'webrtc'
                     type: 'webrtc',
                     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.classiolabs.com/app/'+stream
+                    file: 'wss://stream.classiolabs.com/app/'+stream+'/abr'
                 },
-                // {
-                //
-                //     label: '1080p',
-                //     // Set the type to 'webrtc'
-                //     type: 'webrtc',
-                //     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                //     file: 'wss://stream.classiolabs.com/app/' + stream + "_1080"
-                //
-                // },
-                // {
-                //
-                //     label: '720p',
-                //     // Set the type to 'webrtc'
-                //     type: 'webrtc',
-                //     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                //     file: 'wss://stream.classiolabs.com/app/' + stream + "_720"
-                //
-                // },
-                // {
-                //
-                //     label: '480p',
-                //     // Set the type to 'webrtc'
-                //     type: 'webrtc',
-                //     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                //     file: 'wss://stream.classiolabs.com/app/' + stream + "_480"
-                //
-                // },
-                // {
-                //
-                //     label: '360p',
-                //     // Set the type to 'webrtc'
-                //     type: 'webrtc',
-                //     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                //     file: 'wss://stream.classiolabs.com/app/' + stream + "_360"
-                //
-                // },
+
             ],
             mute:false,
             autoStart: true,
@@ -285,14 +271,17 @@ function Main() {
         videoPlayer.setVolume(100)
         videoPlayer.showControls(false)
         videoPlayer.setAutoQuality(true);
+        setSelectedQuality('Auto');
         // videoPlayer.setCurrentSource(3)
         // videoPlayer.setMute(false);
         videoPlayer.on('stateChanged', function (data) {
             if (data?.newstate === "playing") {
                 setPlayPause(true)
+
             }
             else {
                 setPlayPause(false)
+
             }
 
         })
@@ -322,7 +311,15 @@ function Main() {
 
         // }));
 
-        fetchAudioStreams();
+        try {
+            if (audioStreams.length < 1) {
+                fetchAudioStreams();
+            }
+        }catch (e)
+        {
+
+        }
+
 
     }
 
@@ -370,57 +367,57 @@ function Main() {
         })
     }, []);
     //
-    useEffect(() => {
-        let tempMap = audioStreamMap.size > 0 ? audioStreamMap : new Map();
-        audioStreams.forEach((value, index) => {
-            if ((tempMap.get(parseInt(value)) === undefined) && parseInt(value) !== parseInt(streamId)) {
-
-                tempMap.set(parseInt(value), '');
-                setAudioStreamMap(tempMap);
-            }
-            else if ((tempMap.get(parseInt(value)) !== undefined) && (!audioStreams.includes(value))) {
-                tempMap.get(parseInt(value)).remove();
-                tempMap.delete(parseInt(value));
-                setAudioStreamMap(tempMap);
-            }
-
-        });
-        checkPlayerError();
-        try{
-            Array.from(audioStreamMap.keys()).map((key) => {
-                    if (audioStreamMap.get(key) === '') {
-                        let tempMap = audioStreamMap;
-                        let aplayer = OvenPlayer.create('audio' + key, {
-                            sources: [
-                                {
-
-                                    label: 'label_for_webrtc',
-                                    // Set the type to 'webrtc'
-                                    type: 'webrtc',
-                                    // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                                    file: 'wss://audio.classiolabs.com/app/' + key
-
-                                }
-                            ], autoStart: true,
-
-                            webrtcConfig:
-                                {
-                                    timeoutMaxRetry: 100000,
-                                    connectionTimeout: 50000
-                                }
-
-                        });
-
-                        tempMap.set(parseInt(key), aplayer);
-                        setAudioStreamMap(tempMap);
-                    }
-                }
-            );
-        }catch (e)
-        {
-
-        }
-    }, [audioStreams])
+    // useEffect(() => {
+    //     let tempMap = audioStreamMap.size > 0 ? audioStreamMap : new Map();
+    //     audioStreams.forEach((value, index) => {
+    //         if ((tempMap.get(parseInt(value)) === undefined) && parseInt(value) !== parseInt(streamId)) {
+    //
+    //             tempMap.set(parseInt(value), '');
+    //             setAudioStreamMap(tempMap);
+    //         }
+    //         else if ((tempMap.get(parseInt(value)) !== undefined) && (!audioStreams.includes(value))) {
+    //             tempMap.get(parseInt(value)).remove();
+    //             tempMap.delete(parseInt(value));
+    //             setAudioStreamMap(tempMap);
+    //         }
+    //
+    //     });
+    //     checkPlayerError();
+    //     try{
+    //         Array.from(audioStreamMap.keys()).map((key) => {
+    //                 if (audioStreamMap.get(key) === '') {
+    //                     let tempMap = audioStreamMap;
+    //                     let aplayer = OvenPlayer.create('audio' + key, {
+    //                         sources: [
+    //                             {
+    //
+    //                                 label: 'label_for_webrtc',
+    //                                 // Set the type to 'webrtc'
+    //                                 type: 'webrtc',
+    //                                 // Set the file to WebRTC Signaling URL with OvenMediaEngine
+    //                                 file: 'wss://audio.classiolabs.com/app/' + key
+    //
+    //                             }
+    //                         ], autoStart: true,
+    //
+    //                         webrtcConfig:
+    //                             {
+    //                                 timeoutMaxRetry: 100000,
+    //                                 connectionTimeout: 50000
+    //                             }
+    //
+    //                     });
+    //
+    //                     tempMap.set(parseInt(key), aplayer);
+    //                     setAudioStreamMap(tempMap);
+    //                 }
+    //             }
+    //         );
+    //     }catch (e)
+    //     {
+    //
+    //     }
+    // }, [audioStreams])
 
 
     useEffect(() => {
@@ -454,9 +451,11 @@ function Main() {
 
     const handlePlay = () => {
         player?.play();
+        setPause(false);
     }
     const handlePouse = () => {
         player?.pause();
+        setPause(true);
     }
     const handleVolumeOn = () => {
         player?.setMute(false);
@@ -508,6 +507,7 @@ function Main() {
             player.setAutoQuality(true);
         }
         else{
+            player.setAutoQuality(false);
             player.getQualityLevels().forEach((object,index)=>{
                 if(object.label===option)
                 {
