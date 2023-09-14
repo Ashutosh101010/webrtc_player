@@ -20,17 +20,16 @@ import ErrorModal from './ErrorModal';
 
 var React = require('react');
 
-const STUDENT_DETAIL_URL = "https://api.softkitesinfo.com/student/fetch-details";
-const FETCH_INSTITUTE_URL = "https://api.softkitesinfo.com/getMetaData/fetch-institute"
+const BASE_URL="https://prodapi.classiolabs.com";
+const STUDENT_DETAIL_URL = BASE_URL+"/student/fetch-details";
+const FETCH_INSTITUTE_URL = BASE_URL+"/getMetaData/fetch-institute";
 
 function Main() {
     const [player, setPlayer] = useState();
     const { liveId, userId } = useParams();
     const location = useLocation();
     const token = location.search.split("?token=").join('');
-    const [roomSocketUrl, setRoomSocketUrl] = useState("wss://api.softkitesinfo.com/ws/room/" + liveId + "/" + userId + "/false")
-    // const [roomSocketUrl, setRoomSocketUrl] = useState("ws://192.168.1.13:6060/room/" + liveId + "/" + userId +
-    // "/false")
+    const [roomSocketUrl, setRoomSocketUrl] = useState(BASE_URL+"/ws/room/" + liveId + "/" + userId + "/false")
     const [micAllowed, setMicAllowed] = useState(false);
     const [raisedHand, setRaisedHand] = useState(false);
     const [audioStreams, setAudioStreams] = useState([]);
