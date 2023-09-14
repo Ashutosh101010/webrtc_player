@@ -144,11 +144,7 @@ function Main() {
                 console.log("event", event);
                 // ovenLivekit.inputStream.getAudioTracks()[0].enabled;
 
-                // if (state === 'connected') {
 
-                    addStream();
-                    setAvailable(true);
-                // }
 
             },
             connectionClosed: function (type, event) {
@@ -156,6 +152,10 @@ function Main() {
             },
             iceStateChange: function (state) {
                 console.log("state", state);
+                if (state === 'connected') {
+                addStream();
+                setAvailable(true);
+                }
             }
         }
     });
