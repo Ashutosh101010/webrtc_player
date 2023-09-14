@@ -144,6 +144,11 @@ function Main() {
                 console.log("event", event);
                 // ovenLivekit.inputStream.getAudioTracks()[0].enabled;
 
+                // if (state === 'connected') {
+
+                    addStream();
+                    setAvailable(true);
+                // }
 
             },
             connectionClosed: function (type, event) {
@@ -151,11 +156,6 @@ function Main() {
             },
             iceStateChange: function (state) {
                 console.log("state", state);
-                if (state === 'connected') {
-
-                    addStream();
-                    setAvailable(true);
-                }
             }
         }
     });
@@ -571,7 +571,7 @@ function Main() {
                                 <div style={{ display: style ? "block" : "none" }}>
                                             <Button onClick={() => { raiseHand() }}  disabled={moduleSetting?.raiseHand === true ? false : true}>
                                                 <PanToolIcon sx={{ color: moduleSetting?.raiseHand === false ? "#cccccc7a" : raisedHandState ? "green" : '#cccccc' }} />
-                                            </Button> 
+                                            </Button>
                                     {!playPause ?
                                         <Button onClick={handlePlay}><PlayArrowIcon sx={{ color: '#cccccc' }} /></Button>
                                         : <Button onClick={handlePouse}>
