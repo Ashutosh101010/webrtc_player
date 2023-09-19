@@ -25,20 +25,16 @@ const FETCH_INSTITUTE_URL = "https://api.softkitesinfo.com/getMetaData/fetch-ins
 
 function Main() {
     const [player, setPlayer] = useState();
-    const { liveId, userId } = useParams();
+    const {liveId, userId} = useParams();
     const location = useLocation();
     const token = location.search.split("?token=").join('');
     const [roomSocketUrl, setRoomSocketUrl] = useState("wss://api.softkitesinfo.com/ws/room/" + liveId + "/" + userId + "/false")
-    // const [roomSocketUrl, setRoomSocketUrl] = useState("ws://192.168.1.13:6060/room/" + liveId + "/" + userId +
-    // "/false")
     const [micAllowed, setMicAllowed] = useState(false);
-    const [raisedHand, setRaisedHand] = useState(false);
     const [audioStreams, setAudioStreams] = useState([]);
     const [mainStreamId, setMainStreamId] = useState();
     const [mic, setMic] = useState(false);
     const [mediaStream, setMediaStream] = useState();
     const [streamId, setStreamId] = useState(Date.now().toString());
-    const [audioPlayer, setAudioPLayers] = useState([]);
     const [playPause, setPlayPause] = useState(false);
     const [muteUnmutes, setMuteUnmutes] = useState(false);
     const [raisedHandState, setRaisedHandState] = useState(false);
@@ -48,7 +44,6 @@ function Main() {
     const [settingMenu, setSettingMenu] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [style, setStyle] = useState(false);
-    const [audioPlayerRefresh, setAudioPlayerRefresh] = useState(false);
     const [audioStreamMap, setAudioStreamMap] = useState(new Map());
     const [currentStreams, setCurrentStreams] = useState([]);
     const [available, setAvailable] = useState(false);
@@ -59,13 +54,14 @@ function Main() {
     const [pause, setPause] = useState(false);
     const [instituteList, setInstituteList] = useState([]);
     const moduleSetting = instituteList?.institute?.instituteModuleSetting;
-
+    const [retry,setRetry]=useState(0);
+    const maxRetry=20;
     useEffect(() => {
 
         checkPlayerError();
-        // const timer = setTimeout(() => checkVideo(), 1000);
 
     }, [])
+
     useEffect(() => {
         StudentFetchDetail();
         getInstituteDetail();
@@ -77,10 +73,11 @@ function Main() {
             let response = await axios.get(
                 FETCH_INSTITUTE_URL,
                 {
-                    headers: { "X-Auth": token },
+                    headers: {"X-Auth": token},
                     withCredentials: false,
                 }
-            );;
+            );
+            ;
 
             setInstituteList(response.data)
         } catch (err) {
@@ -95,7 +92,7 @@ function Main() {
             const response = await axios.get(
                 STUDENT_DETAIL_URL,
                 {
-                    headers: { "X-Auth": token }
+                    headers: {"X-Auth": token}
                 }
             );
             setAuthUser(response?.data)
@@ -119,7 +116,20 @@ function Main() {
         } catch (e) {
             console.log(e);
         }
+
+        try{
+            if(!available && retry<maxRetry)
+            {
+                initializeAudioStream();
+                let tempRetry=retry;
+                setRetry(tempRetry++);
+            }
+        }catch (e)
+        {
+
+        }
     }
+
     function checkPlayerError() {
 
         try {
@@ -145,7 +155,6 @@ function Main() {
                 // ovenLivekit.inputStream.getAudioTracks()[0].enabled;
 
 
-
             },
             connectionClosed: function (type, event) {
                 console.log("close", type, event)
@@ -153,8 +162,8 @@ function Main() {
             iceStateChange: function (state) {
                 console.log("state", state);
                 if (state === 'connected') {
-                addStream();
-                setAvailable(true);
+                    addStream();
+                    setAvailable(true);
                 }
             }
         }
@@ -243,13 +252,13 @@ function Main() {
     }
 
     function fetchMainStream() {
-        var msg = { "type": "fetchMainStream" };
+        var msg = {"type": "fetchMainStream"};
         sendRoomMessage(JSON.stringify(msg));
 
     }
 
     function fetchAudioStreams() {
-        var msg = { "type": "fetchStreams" };
+        var msg = {"type": "fetchStreams"};
         sendRoomMessage(JSON.stringify(msg));
     }
 
@@ -338,13 +347,14 @@ function Main() {
     }
 
     function raiseHand() {
-        setRaisedHandState(true)
-        var msg = { "type": "raiseHand" };
+        let raised=raisedHandState;
+        setRaisedHandState(!raised)
+        var msg = {"type": "raiseHand"};
         sendRoomMessage(JSON.stringify(msg));
     }
 
     function addStream() {
-        var msg = { "type": "addStream", "data": streamId }
+        var msg = {"type": "addStream", "data": streamId}
         sendRoomMessage(JSON.stringify(msg));
     }
 
@@ -534,7 +544,7 @@ function Main() {
         <div className="App">
             {
                 authUser?.errorCode === 0 ? <>
-                    <MainModal fetchMainStream={fetchMainStream} />
+                    <MainModal fetchMainStream={fetchMainStream}/>
                     <Grid container>
                         {
                             Array.from(audioStreamMap.keys()).map((key, index) => {
@@ -551,7 +561,7 @@ function Main() {
                                         }}
                                     >
                                         {/*<div id={'audio' + key}></div>*/}
-                                        {React.createElement("div", { id: 'audio' + parseInt(key) })}
+                                        {React.createElement("div", {id: 'audio' + parseInt(key)})}
 
                                     </Box>
                                     </Grid>
@@ -563,35 +573,37 @@ function Main() {
                         }
                     </Grid>
                     <Grid item>
-                        <Box height="100vh" display="flex" flexDirection="column" sx={{ backgroundColor: "black" }}>
+                        <Box height="100vh" display="flex" flexDirection="column" sx={{backgroundColor: "black"}}>
                             <Box onClick={handleShowHide}>
-                                <div id="mainStream" style={{ position: "relative" }}></div>
+                                <div id="mainStream" style={{position: "relative"}}></div>
                             </Box>
-                            <Box sx={{ position: "absolute", bottom: "0", left: "0", right: "0", paddingBottom: "20px" }}>
-                                <div style={{ display: style ? "block" : "none" }}>
-                                            <Button onClick={() => { raiseHand() }}  disabled={moduleSetting?.raiseHand === true ? false : true}>
-                                                <PanToolIcon sx={{ color: moduleSetting?.raiseHand === false ? "#cccccc7a" : raisedHandState ? "green" : '#cccccc' }} />
-                                            </Button>
+                            <Box sx={{position: "absolute", bottom: "0", left: "0", right: "0", paddingBottom: "20px"}}>
+                                <div style={{display: style ? "block" : "none"}}>
+                                    <Button onClick={() => { raiseHand() }}
+                                            disabled={moduleSetting?.raiseHand === true ? false : true}>
+                                        <PanToolIcon
+                                            sx={{color: moduleSetting?.raiseHand === false ? "#cccccc7a" : raisedHandState ? "green" : '#cccccc'}}/>
+                                    </Button>
                                     {!playPause ?
-                                        <Button onClick={handlePlay}><PlayArrowIcon sx={{ color: '#cccccc' }} /></Button>
+                                        <Button onClick={handlePlay}><PlayArrowIcon sx={{color: '#cccccc'}}/></Button>
                                         : <Button onClick={handlePouse}>
-                                            <Pause sx={{ color: '#cccccc' }} />
+                                            <Pause sx={{color: '#cccccc'}}/>
                                         </Button>
                                     }
                                     {
                                         muteUnmutes ? <Button onClick={handleVolumeOn}>
-                                            <VolumeOffIcon sx={{ color: '#cccccc' }} />
+                                            <VolumeOffIcon sx={{color: '#cccccc'}}/>
                                         </Button> : <Button onClick={handleVolumeOff}>
-                                            <VolumeUpIcon sx={{ color: '#cccccc' }} />
+                                            <VolumeUpIcon sx={{color: '#cccccc'}}/>
                                         </Button>
                                     }
                                     <Button onClick={() => { muteUnmuteMic() }}>
                                         {
-                                            !micAllowed ? <MicOffIcon sx={{ color: "#cccccc7a" }} /> :
+                                            !micAllowed ? <MicOffIcon sx={{color: "#cccccc7a"}}/> :
                                                 mic ?
-                                                    <MicIcon sx={{ color: '#cccccc' }} />
+                                                    <MicIcon sx={{color: '#cccccc'}}/>
                                                     :
-                                                    <MicOffIcon sx={{ color: '#cccccc' }} />
+                                                    <MicOffIcon sx={{color: '#cccccc'}}/>
                                         }
                                     </Button>
                                     {/*{*/}
@@ -629,35 +641,37 @@ function Main() {
                                     {/*        </Button>*/}
                                     {/*        : ""*/}
                                     {/*}*/}
-                                            <Button disabled={moduleSetting?.quality === true ? false : true}>
-                                                <SettingsIcon sx={{ color: moduleSetting?.quality === true ? '#cccccc' : "#cccccc7a" }} onClick={handleSetting} />
-                                                <Menu
-                                                    id="menu-appbar"
-                                                    anchorEl={settingMenu}
-                                                    getContentAnchorEl={null}
-                                                    anchorOrigin={{
-                                                        vertical: 'top',
-                                                        horizontal: 'left',
-                                                    }}
-                                                    transformOrigin={{
-                                                        vertical: 'bottom',
-                                                        horizontal: 'center',
-                                                    }}
-                                                    keepMounted
-                                                    open={Boolean(settingMenu)}
-                                                    onClose={handleSettingClose}
-                                                >
-                                                    {
-                                                        playerQuality?.map((option, i) => {
-                                                            return <Box
-                                                                sx={{ backgroundColor: selectedQuality === option ? 'rgba(25,118,210,0.4)' : 'transparent' }}>
-                                                                <MenuItem key={i}
-                                                                    onClick={() => handleSettingMenu(i, option)}>{option}</MenuItem></Box>
+                                    <Button disabled={moduleSetting?.quality === true ? false : true}>
+                                        <SettingsIcon
+                                            sx={{color: moduleSetting?.quality === true ? '#cccccc' : "#cccccc7a"}}
+                                            onClick={handleSetting}/>
+                                        <Menu
+                                            id="menu-appbar"
+                                            anchorEl={settingMenu}
+                                            getContentAnchorEl={null}
+                                            anchorOrigin={{
+                                                vertical: 'top',
+                                                horizontal: 'left',
+                                            }}
+                                            transformOrigin={{
+                                                vertical: 'bottom',
+                                                horizontal: 'center',
+                                            }}
+                                            keepMounted
+                                            open={Boolean(settingMenu)}
+                                            onClose={handleSettingClose}
+                                        >
+                                            {
+                                                playerQuality?.map((option, i) => {
+                                                    return <Box
+                                                        sx={{backgroundColor: selectedQuality === option ? 'rgba(25,118,210,0.4)' : 'transparent'}}>
+                                                        <MenuItem key={i}
+                                                                  onClick={() => handleSettingMenu(i, option)}>{option}</MenuItem></Box>
 
-                                                        })
-                                                    }
-                                                </Menu>
-                                            </Button>
+                                                })
+                                            }
+                                        </Menu>
+                                    </Button>
 
                                 </div>
                             </Box>
@@ -671,11 +685,11 @@ function Main() {
                 </> : <>
                     {
                         isLoading ? <Backdrop
-                            sx={{ color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+                            sx={{color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1}}
                             open={isLoading}
                         >
-                            <Circle color={"#fafafa"} size={50} />
-                        </Backdrop> : <ErrorModal />
+                            <Circle color={"#fafafa"} size={50}/>
+                        </Backdrop> : <ErrorModal/>
                     }
                 </>
             }
