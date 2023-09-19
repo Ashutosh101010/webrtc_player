@@ -21,6 +21,7 @@ import ErrorModal from './ErrorModal';
 var React = require('react');
 
 const BASE_URL="https://prodapi.classiolabs.com";
+const BASE_URL_SOCKET="wss://prodapi.classiolabs.com";
 const STUDENT_DETAIL_URL = BASE_URL+"/student/fetch-details";
 const FETCH_INSTITUTE_URL = BASE_URL+"/getMetaData/fetch-institute";
 
@@ -29,7 +30,7 @@ function Main() {
     const { liveId, userId } = useParams();
     const location = useLocation();
     const token = location.search.split("?token=").join('');
-    const [roomSocketUrl, setRoomSocketUrl] = useState(BASE_URL+"/ws/room/" + liveId + "/" + userId + "/false")
+    const [roomSocketUrl, setRoomSocketUrl] = useState(BASE_URL_SOCKET+"/ws/room/" + liveId + "/" + userId + "/false")
     const [micAllowed, setMicAllowed] = useState(false);
     const [raisedHand, setRaisedHand] = useState(false);
     const [audioStreams, setAudioStreams] = useState([]);
