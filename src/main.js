@@ -577,39 +577,39 @@ function Main() {
                             <Box onClick={handleShowHide}>
                                 <div id="mainStream" style={{position: "relative"}}></div>
                             </Box>
-                            <Box sx={{position: "absolute", bottom: "0", left: "0", right: "0", paddingBottom: "20px"}}>
-                                <div style={{display: style ? "block" : "none"}}>
+                            <Box sx={{position: "absolute", bottom: "0", left: "0", right: "0"}}>
+                                <div style={{display: style ? "block" : "none", background: "rgba(0, 0, 0, 0.35)"}}>
                                     <Button onClick={() => { raiseHand() }}
                                             disabled={moduleSetting?.raiseHand === true ? false : true}>
                                         <PanToolIcon
-                                            sx={{color: moduleSetting?.raiseHand === false ? "#cccccc7a" : raisedHandState ? "green" : '#cccccc'}}/>
+                                            sx={{color: moduleSetting?.raiseHand === false ? "#cccccc7a" : raisedHandState ? "green" : '#fff'}}/>
                                     </Button>
                                     {!playPause ?
-                                        <Button onClick={handlePlay}><PlayArrowIcon sx={{color: '#cccccc'}}/></Button>
+                                        <Button onClick={handlePlay}><PlayArrowIcon sx={{color: '#fff'}}/></Button>
                                         : <Button onClick={handlePouse}>
-                                            <Pause sx={{color: '#cccccc'}}/>
+                                            <Pause sx={{color: '#fff'}}/>
                                         </Button>
                                     }
                                     {
                                         muteUnmutes ? <Button onClick={handleVolumeOn}>
-                                            <VolumeOffIcon sx={{color: '#cccccc'}}/>
+                                            <VolumeOffIcon sx={{color: '#fff'}}/>
                                         </Button> : <Button onClick={handleVolumeOff}>
-                                            <VolumeUpIcon sx={{color: '#cccccc'}}/>
+                                            <VolumeUpIcon sx={{color: '#fff'}}/>
                                         </Button>
                                     }
                                     <Button onClick={() => { muteUnmuteMic() }}>
                                         {
                                             !micAllowed ? <MicOffIcon sx={{color: "#cccccc7a"}}/> :
                                                 mic ?
-                                                    <MicIcon sx={{color: '#cccccc'}}/>
+                                                    <MicIcon sx={{color: '#fff'}}/>
                                                     :
-                                                    <MicOffIcon sx={{color: '#cccccc'}}/>
+                                                    <MicOffIcon sx={{color: '#fff'}}/>
                                         }
                                     </Button>
                                     {/*{*/}
                                     {/*    audioInputDevices?.length > 0 ?*/}
                                     {/*        <Button sx={{marginLeft: "0px", marginTop: "-10px"}}>*/}
-                                    {/*            <KeyboardArrowUpIcon onClick={handleMenu} sx={{color: '#cccccc'}}*/}
+                                    {/*            <KeyboardArrowUpIcon onClick={handleMenu} sx={{color: '#fff'}}*/}
                                     {/*                                 fontSize='small'/>*/}
                                     {/*            <Menu*/}
                                     {/*                id="menu-appbar"*/}
@@ -643,7 +643,7 @@ function Main() {
                                     {/*}*/}
                                     <Button disabled={moduleSetting?.quality === true ? false : true}>
                                         <SettingsIcon
-                                            sx={{color: moduleSetting?.quality === true ? '#cccccc' : "#cccccc7a"}}
+                                            sx={{color: moduleSetting?.quality === true ? '#fff' : "#cccccc7a"}}
                                             onClick={handleSetting}/>
                                         <Menu
                                             id="menu-appbar"
