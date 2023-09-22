@@ -20,15 +20,15 @@ import ErrorModal from './ErrorModal';
 
 var React = require('react');
 
-const STUDENT_DETAIL_URL = "https://api.softkitesinfo.com/student/fetch-details";
-const FETCH_INSTITUTE_URL = "https://api.softkitesinfo.com/getMetaData/fetch-institute"
+const STUDENT_DETAIL_URL = "https://prodapi.classiolabs.com/student/fetch-details";
+const FETCH_INSTITUTE_URL = "https://prodapi.classiolabs.com/getMetaData/fetch-institute"
 
 function Main() {
     const [player, setPlayer] = useState();
     const {liveId, userId} = useParams();
     const location = useLocation();
     const token = location.search.split("?token=").join('');
-    const [roomSocketUrl, setRoomSocketUrl] = useState("wss://api.softkitesinfo.com/ws/room/" + liveId + "/" + userId + "/false")
+    const [roomSocketUrl, setRoomSocketUrl] = useState("wss://prodapi.classiolabs.com/ws/room/" + liveId + "/" + userId + "/false")
     const [micAllowed, setMicAllowed] = useState(false);
     const [audioStreams, setAudioStreams] = useState([]);
     const [mainStreamId, setMainStreamId] = useState();
@@ -117,17 +117,17 @@ function Main() {
             console.log(e);
         }
 
-        try{
-            if(!available && retry<maxRetry)
-            {
-                initializeAudioStream();
-                let tempRetry=retry;
-                setRetry(tempRetry++);
-            }
-        }catch (e)
-        {
-
-        }
+        // try{
+        //     if(!available && retry<maxRetry)
+        //     {
+        //         initializeAudioStream();
+        //         let tempRetry=retry;
+        //         setRetry(tempRetry++);
+        //     }
+        // }catch (e)
+        // {
+        //
+        // }
     }
 
     function checkPlayerError() {
@@ -142,8 +142,15 @@ function Main() {
         } catch (e) {
 
         }
-    }
 
+        try{
+
+        }catch (e)
+        {
+
+        }
+
+    }
 
     let ovenLivekit = OvenLiveKit.create({
         callbacks: {
@@ -161,9 +168,17 @@ function Main() {
             },
             iceStateChange: function (state) {
                 console.log("state", state);
+                try{
                 if (state === 'connected') {
                     addStream();
                     setAvailable(true);
+                }else if(state==='closed' || state==='failed' ){
+                    setAvailable(false);
+                    initializeAudioStream();
+                }
+                }catch (e)
+                {
+
                 }
             }
         }
@@ -178,7 +193,7 @@ function Main() {
         onOpen: () => {
             console.log('WebSocket room connection established.');
             // fetchMainStream();
-            initializeAudioStream();
+            // initializeAudioStream();
         }
         ,
         onMessage: (message) => {
@@ -205,6 +220,10 @@ function Main() {
                     setMicAllowed(true);
 
                     setRaisedHandState(false);
+                    if(!available)
+                    {
+                            initializeAudioStream();
+                    }
                 }
 
             }
@@ -234,21 +253,26 @@ function Main() {
     }
 
     function initializeAudioStream() {
-        ovenLivekit.getUserMedia({
-            audio: true,
-            video: true
-        }).then(function (stream) {
-            setMediaStream(stream);
+        try {
+            ovenLivekit.getUserMedia({
+                audio: true,
+                video: true
+            }).then(function (stream) {
+                setMediaStream(stream);
 
-            ovenLivekit.startStreaming('wss://audio.classiolabs.com/app/' + streamId + '?direction=send&transport=tcp');
-            stream.getVideoTracks().forEach(value => {
-                value.enabled = false;
-            })
-            stream.getAudioTracks()[0].enabled = false;
+                ovenLivekit.startStreaming('wss://audio.classiolabs.com/app/' + streamId + '?direction=send&transport=tcp');
+                stream.getVideoTracks().forEach(value => {
+                    value.enabled = false;
+                })
+                stream.getAudioTracks()[0].enabled = false;
 
-            // addStream();
+                // addStream();
 
-        });
+            });
+        }catch (e)
+        {
+
+        }
     }
 
     function fetchMainStream() {
