@@ -20,18 +20,17 @@ const MainModal = ({ fetchMainStream }) => {
 
         <Dialog open={open} PaperProps={{
             style: {
-                width: '60%',
+                // width: '60%',
                 maxHeight: '90%',
+                margin: "10px"
             }
         }}>
-            <Box sx={{ padding: "5px" }}>
+            <Box sx={{ padding: "20px" }}>
                 <Grid container>
                     <Grid item xs={12} sm={12} md={12} lg={12} sx={{ display: "flex", justifyContent: "center", textAlign: "center" }}>
-                        <Box sx={{ marginLeft: "5rem" }}>
+                        <Box sx={{ marginLeft: "1rem", display: "block", textAlign: "center" }}>
                             <Box sx={{ display: "flex", margin: "10px" }}>
-                                <PlayArrowIcon color="action" />
-                                <Typography> &nbsp; &nbsp; - &nbsp; &nbsp;</Typography>
-                                <Typography><b>Play</b></Typography>
+                                <PlayArrowIcon color="action" /> &nbsp; &nbsp; - &nbsp; &nbsp;<Typography><b>Play</b></Typography>
                             </Box>
                             <Box sx={{ display: "flex", margin: "10px" }}>
                                 <Pause color="action" />&nbsp; &nbsp; - &nbsp; &nbsp;<Typography><b>Pause</b></Typography>
@@ -56,7 +55,7 @@ const MainModal = ({ fetchMainStream }) => {
                             </Box>
                             <Button
                                 variant="text"
-                                sx={{ marginLeft: "3em", float: "left" }}
+                                // sx={{ marginLeft: "3em", float: "left" }}
                                 onClick={handleClose}
                                 color="primary"
                             >
