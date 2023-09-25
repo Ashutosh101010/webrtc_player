@@ -172,6 +172,8 @@ function Main() {
                 if (state === 'connected') {
                     addStream();
                     setAvailable(true);
+                    setMicAllowed(true);
+                    setRaisedHandState(false);
                 }else if(state==='closed' || state==='failed' ){
                     setAvailable(false);
                     initializeAudioStream();
@@ -220,10 +222,11 @@ function Main() {
                     setMicAllowed(true);
 
                     setRaisedHandState(false);
-                    if(!available)
-                    {
-                            initializeAudioStream();
-                    }
+
+                }
+                if(!available)
+                {
+                    initializeAudioStream();
                 }
 
             }
