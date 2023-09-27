@@ -25,7 +25,7 @@ const FETCH_INSTITUTE_URL = "https://api.softkitesinfo.com/getMetaData/fetch-ins
 
 function Main() {
     const [player, setPlayer] = useState();
-    const {liveId, userId} = useParams();
+    const { liveId, userId } = useParams();
     const location = useLocation();
     const token = location.search.split("?token=").join('');
     const [roomSocketUrl, setRoomSocketUrl] = useState("wss://api.softkitesinfo.com/ws/room/" + liveId + "/" + userId + "/false")
@@ -54,15 +54,23 @@ function Main() {
     const [pause, setPause] = useState(false);
     const [instituteList, setInstituteList] = useState([]);
     const moduleSetting = instituteList?.institute?.instituteModuleSetting;
-    const [retry,setRetry]=useState(0);
-    const maxRetry=20;
+    const [retry, setRetry] = useState(0);
+    const maxRetry = 20;
+    const [participants, setParticipants] = useState([]);
     useEffect(() => {
+        if (participants.length > 0) {
+            participants.forEach((items) => {
+                if (items.userId === userId) {
+                    setMicAllowed(items.micAllow);
+                    setRaisedHandState(items.handRaise);
+                    setMic(items.mute);
+                }
+            })
+        }
+    }, [participants])
 
+    useEffect(() => {
         checkPlayerError();
-
-    }, [])
-
-    useEffect(() => {
         StudentFetchDetail();
         getInstituteDetail();
     }, [])
@@ -73,7 +81,7 @@ function Main() {
             let response = await axios.get(
                 FETCH_INSTITUTE_URL,
                 {
-                    headers: {"X-Auth": token},
+                    headers: { "X-Auth": token },
                     withCredentials: false,
                 }
             );
@@ -92,7 +100,7 @@ function Main() {
             const response = await axios.get(
                 STUDENT_DETAIL_URL,
                 {
-                    headers: {"X-Auth": token}
+                    headers: { "X-Auth": token }
                 }
             );
             setAuthUser(response?.data)
@@ -117,15 +125,13 @@ function Main() {
             console.log(e);
         }
 
-        try{
-            if(!available && retry<maxRetry)
-            {
+        try {
+            if (!available && retry < maxRetry) {
                 initializeAudioStream();
-                let tempRetry=retry;
+                let tempRetry = retry;
                 setRetry(tempRetry++);
             }
-        }catch (e)
-        {
+        } catch (e) {
 
         }
     }
@@ -184,6 +190,10 @@ function Main() {
         onMessage: (message) => {
             const data = JSON.parse(message.data);
             checkVideo();
+            console.log('data', data);
+            if (data.type === "students") {
+                setParticipants(data.students);
+            }
             if (data.type === 'streams') {
                 let streams = [...currentStreams];
                 data.streams.forEach(value => {
@@ -252,13 +262,13 @@ function Main() {
     }
 
     function fetchMainStream() {
-        var msg = {"type": "fetchMainStream"};
+        var msg = { "type": "fetchMainStream" };
         sendRoomMessage(JSON.stringify(msg));
 
     }
 
     function fetchAudioStreams() {
-        var msg = {"type": "fetchStreams"};
+        var msg = { "type": "fetchStreams" };
         sendRoomMessage(JSON.stringify(msg));
     }
 
@@ -347,14 +357,14 @@ function Main() {
     }
 
     function raiseHand() {
-        let raised=raisedHandState;
+        let raised = raisedHandState;
         setRaisedHandState(!raised)
-        var msg = {"type": "raiseHand"};
+        var msg = { "type": "raiseHand" };
         sendRoomMessage(JSON.stringify(msg));
     }
 
     function addStream() {
-        var msg = {"type": "addStream", "data": streamId}
+        var msg = { "type": "addStream", "data": streamId }
         sendRoomMessage(JSON.stringify(msg));
     }
 
@@ -544,7 +554,7 @@ function Main() {
         <div className="App">
             {
                 authUser?.errorCode === 0 ? <>
-                    <MainModal fetchMainStream={fetchMainStream}/>
+                    <MainModal fetchMainStream={fetchMainStream} />
                     <Grid container>
                         {
                             Array.from(audioStreamMap.keys()).map((key, index) => {
@@ -561,7 +571,7 @@ function Main() {
                                         }}
                                     >
                                         {/*<div id={'audio' + key}></div>*/}
-                                        {React.createElement("div", {id: 'audio' + parseInt(key)})}
+                                        {React.createElement("div", { id: 'audio' + parseInt(key) })}
 
                                     </Box>
                                     </Grid>
@@ -573,37 +583,37 @@ function Main() {
                         }
                     </Grid>
                     <Grid item>
-                        <Box height="100vh" display="flex" flexDirection="column" sx={{backgroundColor: "black"}}>
+                        <Box height="100vh" display="flex" flexDirection="column" sx={{ backgroundColor: "black" }}>
                             <Box onClick={handleShowHide}>
-                                <div id="mainStream" style={{position: "relative"}}></div>
+                                <div id="mainStream" style={{ position: "relative" }}></div>
                             </Box>
-                            <Box sx={{position: "absolute", bottom: "0", left: "0", right: "0"}}>
-                                <div style={{display: style ? "block" : "none", background: "rgba(0, 0, 0, 0.35)"}}>
+                            <Box sx={{ position: "absolute", bottom: "0", left: "0", right: "0" }}>
+                                <div style={{ display: style ? "block" : "none", background: "rgba(0, 0, 0, 0.35)" }}>
                                     <Button onClick={() => { raiseHand() }}
-                                            disabled={moduleSetting?.raiseHand === true ? false : true}>
+                                        disabled={moduleSetting?.raiseHand === true ? false : true}>
                                         <PanToolIcon
-                                            sx={{color: moduleSetting?.raiseHand === false ? "#cccccc7a" : raisedHandState ? "green" : '#fff'}}/>
+                                            sx={{ color: moduleSetting?.raiseHand === false ? "#cccccc7a" : raisedHandState ? "green" : '#fff' }} />
                                     </Button>
                                     {!playPause ?
-                                        <Button onClick={handlePlay}><PlayArrowIcon sx={{color: '#fff'}}/></Button>
+                                        <Button onClick={handlePlay}><PlayArrowIcon sx={{ color: '#fff' }} /></Button>
                                         : <Button onClick={handlePouse}>
-                                            <Pause sx={{color: '#fff'}}/>
+                                            <Pause sx={{ color: '#fff' }} />
                                         </Button>
                                     }
                                     {
                                         muteUnmutes ? <Button onClick={handleVolumeOn}>
-                                            <VolumeOffIcon sx={{color: '#fff'}}/>
+                                            <VolumeOffIcon sx={{ color: '#fff' }} />
                                         </Button> : <Button onClick={handleVolumeOff}>
-                                            <VolumeUpIcon sx={{color: '#fff'}}/>
+                                            <VolumeUpIcon sx={{ color: '#fff' }} />
                                         </Button>
                                     }
                                     <Button onClick={() => { muteUnmuteMic() }}>
                                         {
-                                            !micAllowed ? <MicOffIcon sx={{color: "#cccccc7a"}}/> :
+                                            !micAllowed ? <MicOffIcon sx={{ color: "#cccccc7a" }} /> :
                                                 mic ?
-                                                    <MicIcon sx={{color: '#fff'}}/>
+                                                    <MicIcon sx={{ color: '#fff' }} />
                                                     :
-                                                    <MicOffIcon sx={{color: '#fff'}}/>
+                                                    <MicOffIcon sx={{ color: '#fff' }} />
                                         }
                                     </Button>
                                     {/*{*/}
@@ -643,8 +653,8 @@ function Main() {
                                     {/*}*/}
                                     <Button disabled={moduleSetting?.quality === true ? false : true}>
                                         <SettingsIcon
-                                            sx={{color: moduleSetting?.quality === true ? '#fff' : "#cccccc7a"}}
-                                            onClick={handleSetting}/>
+                                            sx={{ color: moduleSetting?.quality === true ? '#fff' : "#cccccc7a" }}
+                                            onClick={handleSetting} />
                                         <Menu
                                             id="menu-appbar"
                                             anchorEl={settingMenu}
@@ -664,9 +674,9 @@ function Main() {
                                             {
                                                 playerQuality?.map((option, i) => {
                                                     return <Box
-                                                        sx={{backgroundColor: selectedQuality === option ? 'rgba(25,118,210,0.4)' : 'transparent'}}>
+                                                        sx={{ backgroundColor: selectedQuality === option ? 'rgba(25,118,210,0.4)' : 'transparent' }}>
                                                         <MenuItem key={i}
-                                                                  onClick={() => handleSettingMenu(i, option)}>{option}</MenuItem></Box>
+                                                            onClick={() => handleSettingMenu(i, option)}>{option}</MenuItem></Box>
 
                                                 })
                                             }
@@ -685,11 +695,11 @@ function Main() {
                 </> : <>
                     {
                         isLoading ? <Backdrop
-                            sx={{color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1}}
+                            sx={{ color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1 }}
                             open={isLoading}
                         >
-                            <Circle color={"#fafafa"} size={50}/>
-                        </Backdrop> : <ErrorModal/>
+                            <Circle color={"#fafafa"} size={50} />
+                        </Backdrop> : <ErrorModal />
                     }
                 </>
             }
