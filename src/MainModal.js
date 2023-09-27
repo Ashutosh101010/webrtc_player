@@ -9,10 +9,11 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
 
-const MainModal = ({ fetchMainStream }) => {
+const MainModal = ({ fetchMainStream,onClose }) => {
 
     const [open, setOpen] = useState(true);
     const handleClose = () => {
+        onClose();
         fetchMainStream();
         setOpen(false)
     }

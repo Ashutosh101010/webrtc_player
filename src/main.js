@@ -1,7 +1,18 @@
 import './App.css';
 import OvenPlayer from 'ovenplayer';
-import { useEffect, useState } from "react";
-import { Backdrop, Box, Button, Dialog, DialogContent, DialogContentText, DialogTitle, Grid, Menu, MenuItem } from "@mui/material";
+import { useCallback, useEffect, useState } from "react";
+import {
+    Backdrop,
+    Box,
+    Button,
+    Dialog,
+    DialogContent,
+    DialogContentText,
+    DialogTitle,
+    Grid,
+    Menu,
+    MenuItem
+} from "@mui/material";
 import OvenLiveKit from 'ovenlivekit'
 import { useLocation, useParams } from "react-router-dom";
 import useWebSocket from 'react-use-websocket';
@@ -25,16 +36,16 @@ const FETCH_INSTITUTE_URL = "https://api.softkitesinfo.com/getMetaData/fetch-ins
 
 function Main() {
     const [player, setPlayer] = useState();
-    const { liveId, userId } = useParams();
+    const {liveId, userId} = useParams();
     const location = useLocation();
     const token = location.search.split("?token=").join('');
-    const [roomSocketUrl, setRoomSocketUrl] = useState("wss://api.softkitesinfo.com/ws/room/" + liveId + "/" + userId + "/false")
+    const [roomSocketUrl, setRoomSocketUrl] = useState("")
     const [micAllowed, setMicAllowed] = useState(false);
     const [audioStreams, setAudioStreams] = useState([]);
     const [mainStreamId, setMainStreamId] = useState();
     const [mic, setMic] = useState(false);
     const [mediaStream, setMediaStream] = useState();
-    const [streamId, setStreamId] = useState(Date.now().toString());
+    const [streamId, setStreamId] = useState("");
     const [playPause, setPlayPause] = useState(false);
     const [muteUnmutes, setMuteUnmutes] = useState(false);
     const [raisedHandState, setRaisedHandState] = useState(false);
@@ -61,13 +72,17 @@ function Main() {
     const [ticking, setticking] = useState(true);
     const [count, setCount] = useState(0);
     const [socketNetworkError, setSocketNetworkError] = useState(false);
-
+    const [streaming, setStreaming] = useState(false);
     useEffect(() => {
         if (participants.length > 0) {
             participants.forEach((items) => {
                 if (parseInt(items.userId) === parseInt(userId)) {
                     setMicAllowed(items.micAllow);
                     setRaisedHandState(items.handRaise);
+                    if (streamId === "") {
+                        setStreamId(items.audioStreamId);
+                    }
+
                     setMic(items.mute);
                 }
             })
@@ -75,19 +90,31 @@ function Main() {
 
     }, [participants])
 
-    useEffect(()=>{
+    useEffect(() => {
+        if (!available && streamId !== "") {
+            initializeAudioStream();
+        }
+    }, [streamId])
+    useEffect(() => {
         checkVideo();
-        sendPing();
-               
-        console.log('interval');
-        if ((Date.now() - roomPing > 5000)) {
-            console.log('refreshhhhhhhhhhh');
-            setSocketNetworkError(true)
+        if (roomSocketUrl !== "") {
+            sendPing();
+            if ((Date.now() - roomPing > 5000)) {
+                setSocketNetworkError(true);
+                connect();
+            }else{
+                setSocketNetworkError(false);
+            }
         }
 
-            const timer=setTimeout(()=> ticking && setCount(count+1),2e3);
-            return () => clearTimeout(timer);
-    },[count,ticking]);
+        if(!streaming && roomSocketUrl!=="")
+        {
+            console.log("useeffect stream",streaming,roomSocketUrl);
+            initializeAudioStream();
+        }
+        const timer = setTimeout(() => ticking && setCount(count + 1), 2e3);
+        return () => clearTimeout(timer);
+    }, [count, ticking]);
 
     useEffect(() => {
         checkPlayerError();
@@ -96,18 +123,19 @@ function Main() {
 
     }, [])
 
-  
+
     function sendPing() {
-        var object = { "type": "ping" };
+        var object = {"type": "ping"};
         sendRoomMessage(JSON.stringify(object));
     }
+
     const getInstituteDetail = async () => {
 
         try {
             let response = await axios.get(
                 FETCH_INSTITUTE_URL,
                 {
-                    headers: { "X-Auth": token },
+                    headers: {"X-Auth": token},
                     withCredentials: false,
                 }
             );
@@ -126,7 +154,7 @@ function Main() {
             const response = await axios.get(
                 STUDENT_DETAIL_URL,
                 {
-                    headers: { "X-Auth": token }
+                    headers: {"X-Auth": token}
                 }
             );
             setAuthUser(response?.data)
@@ -139,6 +167,8 @@ function Main() {
 
     function checkVideo() {
         try {
+            if(player!==undefined)
+            {
             if (player.getState() === 'error') {
                 loadPlayer(mainStreamId);
             }
@@ -147,19 +177,20 @@ function Main() {
                     player.play();
                 }
             }
+            }
         } catch (e) {
             console.log(e);
         }
 
-        try {
-            if (!available && retry < maxRetry) {
-                initializeAudioStream();
-                let tempRetry = retry;
-                setRetry(tempRetry++);
-            }
-        } catch (e) {
-
-        }
+        // try {
+        //     if (!available && retry < maxRetry) {
+        //         initializeAudioStream();
+        //         let tempRetry = retry;
+        //         setRetry(tempRetry++);
+        //     }
+        // } catch (e) {
+        //
+        // }
     }
 
     function checkPlayerError() {
@@ -187,39 +218,55 @@ function Main() {
         callbacks: {
             error: function (error) {
                 console.log("error", error);
+                // setStreaming(false);
             },
             connected: function (event) {
                 console.log("event", event);
                 // ovenLivekit.inputStream.getAudioTracks()[0].enabled;
-
+                setStreaming(true);
 
             },
             connectionClosed: function (type, event) {
-                console.log("close", type, event)
+                console.log("close", type, event);
+                setStreaming(false);
+                // initializeAudioStream();
             },
             iceStateChange: function (state) {
                 console.log("state", state);
                 try {
                     if (state === 'connected') {
-                        addStream();
+                        // addStream();
                         setAvailable(true);
                         setMicAllowed(true);
                         setRaisedHandState(false);
-                    } else if (state === 'closed' || state === 'failed') {
+                        setStreaming(true);
+                    }
+                    else if (state === 'closed' || state === 'failed') {
+                        console.log("failed");
                         setAvailable(false);
-                        initializeAudioStream();
+                        // initializeAudioStream();
+                        setStreaming(false);
                     }
                 } catch (e) {
-
+                    setStreaming(false);
                 }
             }
         }
     });
 
+    const connectSocket = useCallback(
+        () => setRoomSocketUrl("wss://api.softkitesinfo.com/ws/room/" + liveId + "/" + userId + "/false"),
+        []
+    );
+
+    function connect() {
+        connectSocket();
+    }
+
     const {
         sendMessage: sendRoomMessage,
         lastMessage: roomLastMessage,
-        readyState: roomReadyState
+        readyState: roomReadyState,
     } = useWebSocket(roomSocketUrl, {
 
         onOpen: () => {
@@ -259,9 +306,9 @@ function Main() {
                     setRaisedHandState(false);
 
                 }
-                if (!available) {
-                    initializeAudioStream();
-                }
+                // if (!available) {
+                //     initializeAudioStream();
+                // }
 
             }
             if (data.type === 'micDisallowed') {
@@ -283,36 +330,38 @@ function Main() {
         }
     });
 
-    function removeStream() {
-        setMic(false);
-        mediaStream.getAudioTracks()[0].enabled = false;
-        ovenLivekit.stopStreaming();
-    }
+    // function removeStream() {
+    //     setMic(false);
+    //     mediaStream.getAudioTracks()[0].enabled = false;
+    //     ovenLivekit.stopStreaming();
+    // }
 
     function initializeAudioStream() {
-        try {
-            ovenLivekit.getUserMedia({
-                audio: true,
-                video: true
-            }).then(function (stream) {
-                setMediaStream(stream);
+        if(streamId!==""){
+            try {
+                ovenLivekit.getUserMedia({
+                    audio: true,
+                    video: true
+                }).then(function (stream) {
+                    setMediaStream(stream);
 
-                ovenLivekit.startStreaming('wss://audio.classiolabs.com/app/' + streamId + '?direction=send&transport=tcp');
-                stream.getVideoTracks().forEach(value => {
-                    value.enabled = false;
-                })
-                stream.getAudioTracks()[0].enabled = false;
+                    ovenLivekit.startStreaming('wss://audio.classiolabs.com/app/' + streamId + '?direction=send&transport=tcp');
+                    stream.getVideoTracks().forEach(value => {
+                        value.enabled = true;
+                    })
+                    stream.getAudioTracks()[0].enabled = true;
 
-                // addStream();
+                    // addStream();
 
-            });
-        } catch (e) {
+                });
+            } catch (e) {
 
+            }
         }
     }
 
     function fetchMainStream() {
-        var msg = { "type": "fetchMainStream" };
+        var msg = {"type": "fetchMainStream"};
         sendRoomMessage(JSON.stringify(msg));
 
     }
@@ -409,12 +458,12 @@ function Main() {
     function raiseHand() {
         let raised = raisedHandState;
         setRaisedHandState(!raised)
-        var msg = { "type": "raiseHand" };
+        var msg = {"type": raised == true ? "unRaise" : "raiseHand"};
         sendRoomMessage(JSON.stringify(msg));
     }
 
     function addStream() {
-        var msg = { "type": "addStream", "data": streamId }
+        var msg = {"type": "addStream", "data": streamId}
         sendRoomMessage(JSON.stringify(msg));
     }
 
@@ -600,11 +649,15 @@ function Main() {
         setStyle(!style)
     }
 
+    const onMainModalClose = () => {
+        // initializeAudioStream();
+        connect();
+    };
     return (
         <div className="App">
             {
                 authUser?.errorCode === 0 ? <>
-                    <MainModal fetchMainStream={fetchMainStream} />
+                    <MainModal fetchMainStream={fetchMainStream} onClose={onMainModalClose}/>
                     <Grid container>
                         {
                             Array.from(audioStreamMap.keys()).map((key, index) => {
@@ -621,7 +674,7 @@ function Main() {
                                         }}
                                     >
                                         {/*<div id={'audio' + key}></div>*/}
-                                        {React.createElement("div", { id: 'audio' + parseInt(key) })}
+                                        {React.createElement("div", {id: 'audio' + parseInt(key)})}
 
                                     </Box>
                                     </Grid>
@@ -633,37 +686,37 @@ function Main() {
                         }
                     </Grid>
                     <Grid item>
-                        <Box height="100vh" display="flex" flexDirection="column" sx={{ backgroundColor: "black" }}>
+                        <Box height="100vh" display="flex" flexDirection="column" sx={{backgroundColor: "black"}}>
                             <Box onClick={handleShowHide}>
-                                <div id="mainStream" style={{ position: "relative" }}></div>
+                                <div id="mainStream" style={{position: "relative"}}></div>
                             </Box>
-                            <Box sx={{ position: "absolute", bottom: "0", left: "0", right: "0" }}>
-                                <div style={{ display: style ? "block" : "none", background: "rgba(0, 0, 0, 0.35)" }}>
+                            <Box sx={{position: "absolute", bottom: "0", left: "0", right: "0"}}>
+                                <div style={{display: style ? "block" : "none", background: "rgba(0, 0, 0, 0.35)"}}>
                                     <Button onClick={() => { raiseHand() }}
-                                        disabled={moduleSetting?.raiseHand === true ? false : true}>
+                                            disabled={moduleSetting?.raiseHand === true ? false : true}>
                                         <PanToolIcon
-                                            sx={{ color: moduleSetting?.raiseHand === false ? "#cccccc7a" : raisedHandState ? "green" : '#fff' }} />
+                                            sx={{color: moduleSetting?.raiseHand === false ? "#cccccc7a" : raisedHandState ? "green" : '#fff'}}/>
                                     </Button>
                                     {!playPause ?
-                                        <Button onClick={handlePlay}><PlayArrowIcon sx={{ color: '#fff' }} /></Button>
+                                        <Button onClick={handlePlay}><PlayArrowIcon sx={{color: '#fff'}}/></Button>
                                         : <Button onClick={handlePouse}>
-                                            <Pause sx={{ color: '#fff' }} />
+                                            <Pause sx={{color: '#fff'}}/>
                                         </Button>
                                     }
                                     {
                                         muteUnmutes ? <Button onClick={handleVolumeOn}>
-                                            <VolumeOffIcon sx={{ color: '#fff' }} />
+                                            <VolumeOffIcon sx={{color: '#fff'}}/>
                                         </Button> : <Button onClick={handleVolumeOff}>
-                                            <VolumeUpIcon sx={{ color: '#fff' }} />
+                                            <VolumeUpIcon sx={{color: '#fff'}}/>
                                         </Button>
                                     }
                                     <Button onClick={() => { muteUnmuteMic() }}>
                                         {
-                                            !micAllowed ? <MicOffIcon sx={{ color: "#cccccc7a" }} /> :
+                                            !micAllowed ? <MicOffIcon sx={{color: "#cccccc7a"}}/> :
                                                 mic ?
-                                                    <MicIcon sx={{ color: '#fff' }} />
+                                                    <MicIcon sx={{color: '#fff'}}/>
                                                     :
-                                                    <MicOffIcon sx={{ color: '#fff' }} />
+                                                    <MicOffIcon sx={{color: '#fff'}}/>
                                         }
                                     </Button>
                                     {/*{*/}
@@ -703,8 +756,8 @@ function Main() {
                                     {/*}*/}
                                     <Button disabled={moduleSetting?.quality === true ? false : true}>
                                         <SettingsIcon
-                                            sx={{ color: moduleSetting?.quality === true ? '#fff' : "#cccccc7a" }}
-                                            onClick={handleSetting} />
+                                            sx={{color: moduleSetting?.quality === true ? '#fff' : "#cccccc7a"}}
+                                            onClick={handleSetting}/>
                                         <Menu
                                             id="menu-appbar"
                                             anchorEl={settingMenu}
@@ -724,9 +777,9 @@ function Main() {
                                             {
                                                 playerQuality?.map((option, i) => {
                                                     return <Box
-                                                        sx={{ backgroundColor: selectedQuality === option ? 'rgba(25,118,210,0.4)' : 'transparent' }}>
+                                                        sx={{backgroundColor: selectedQuality === option ? 'rgba(25,118,210,0.4)' : 'transparent'}}>
                                                         <MenuItem key={i}
-                                                            onClick={() => handleSettingMenu(i, option)}>{option}</MenuItem></Box>
+                                                                  onClick={() => handleSettingMenu(i, option)}>{option}</MenuItem></Box>
 
                                                 })
                                             }
@@ -745,42 +798,42 @@ function Main() {
                 </> : <>
                     {
                         isLoading ? <Backdrop
-                            sx={{ color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+                            sx={{color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1}}
                             open={isLoading}
                         >
-                            <Circle color={"#fafafa"} size={50} />
-                        </Backdrop> : <ErrorModal />
+                            <Circle color={"#fafafa"} size={50}/>
+                        </Backdrop> : <ErrorModal/>
                     }
-                   
+
                 </>
             }
- <Dialog
-      sx={{
-        "& .MuiDialog-container": {
-            "& .MuiPaper-root": {
-                width: "20%",
-                maxWidth: "100%",  // Set your width here
-                height: "20%",
-                maxHeight: "100%",
-                margin: 0,
-                alignItems: "center",
-                justifyContent: "center"
-            },
-        },
-    }}
-        open={socketNetworkError}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
-      >
-        <DialogTitle id="alert-dialog-title">
-          {"Network Error"}
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-            Plase reload the page
-          </DialogContentText>
-        </DialogContent>
-      </Dialog>
+            <Dialog
+                sx={{
+                    "& .MuiDialog-container": {
+                        "& .MuiPaper-root": {
+                            width: "20%",
+                            maxWidth: "100%",  // Set your width here
+                            height: "20%",
+                            maxHeight: "100%",
+                            margin: 0,
+                            alignItems: "center",
+                            justifyContent: "center"
+                        },
+                    },
+                }}
+                open={socketNetworkError}
+                aria-labelledby="alert-dialog-title"
+                aria-describedby="alert-dialog-description"
+            >
+                <DialogTitle id="alert-dialog-title">
+                    {"Network Error"}
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText id="alert-dialog-description">
+                        Plase reload the page
+                    </DialogContentText>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
