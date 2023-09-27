@@ -1,7 +1,7 @@
 import './App.css';
 import OvenPlayer from 'ovenplayer';
 import { useEffect, useState } from "react";
-import { Backdrop, Box, Button, Grid, Menu, MenuItem } from "@mui/material";
+import { Backdrop, Box, Button, Dialog, DialogContent, DialogContentText, DialogTitle, Grid, Menu, MenuItem } from "@mui/material";
 import OvenLiveKit from 'ovenlivekit'
 import { useLocation, useParams } from "react-router-dom";
 import useWebSocket from 'react-use-websocket';
@@ -57,24 +57,50 @@ function Main() {
     const [retry, setRetry] = useState(0);
     const maxRetry = 20;
     const [participants, setParticipants] = useState([]);
+    const [roomPing, setRoomPing] = useState(Date.now());
+    const [ticking, setticking] = useState(true);
+    const [count, setCount] = useState(0);
+    const [socketNetworkError, setSocketNetworkError] = useState(false);
+
     useEffect(() => {
         if (participants.length > 0) {
             participants.forEach((items) => {
-                if (items.userId === userId) {
+                if (parseInt(items.userId) === parseInt(userId)) {
                     setMicAllowed(items.micAllow);
                     setRaisedHandState(items.handRaise);
                     setMic(items.mute);
                 }
             })
         }
+
     }, [participants])
+
+    useEffect(()=>{
+        checkVideo();
+        sendPing();
+               
+        console.log('interval');
+        if ((Date.now() - roomPing > 5000)) {
+            console.log('refreshhhhhhhhhhh');
+            setSocketNetworkError(true)
+        }
+
+            const timer=setTimeout(()=> ticking && setCount(count+1),2e3);
+            return () => clearTimeout(timer);
+    },[count,ticking]);
 
     useEffect(() => {
         checkPlayerError();
         StudentFetchDetail();
         getInstituteDetail();
+
     }, [])
 
+  
+    function sendPing() {
+        var object = { "type": "ping" };
+        sendRoomMessage(JSON.stringify(object));
+    }
     const getInstituteDetail = async () => {
 
         try {
@@ -148,8 +174,14 @@ function Main() {
         } catch (e) {
 
         }
-    }
 
+        try {
+
+        } catch (e) {
+
+        }
+
+    }
 
     let ovenLivekit = OvenLiveKit.create({
         callbacks: {
@@ -167,9 +199,18 @@ function Main() {
             },
             iceStateChange: function (state) {
                 console.log("state", state);
-                if (state === 'connected') {
-                    addStream();
-                    setAvailable(true);
+                try {
+                    if (state === 'connected') {
+                        addStream();
+                        setAvailable(true);
+                        setMicAllowed(true);
+                        setRaisedHandState(false);
+                    } else if (state === 'closed' || state === 'failed') {
+                        setAvailable(false);
+                        initializeAudioStream();
+                    }
+                } catch (e) {
+
                 }
             }
         }
@@ -184,12 +225,13 @@ function Main() {
         onOpen: () => {
             console.log('WebSocket room connection established.');
             // fetchMainStream();
-            initializeAudioStream();
+            // initializeAudioStream();
         }
         ,
         onMessage: (message) => {
+            setRoomPing(Date.now());
             const data = JSON.parse(message.data);
-            checkVideo();
+            // checkVideo();
             console.log('data', data);
             if (data.type === "students") {
                 setParticipants(data.students);
@@ -215,6 +257,10 @@ function Main() {
                     setMicAllowed(true);
 
                     setRaisedHandState(false);
+
+                }
+                if (!available) {
+                    initializeAudioStream();
                 }
 
             }
@@ -244,21 +290,25 @@ function Main() {
     }
 
     function initializeAudioStream() {
-        ovenLivekit.getUserMedia({
-            audio: true,
-            video: true
-        }).then(function (stream) {
-            setMediaStream(stream);
+        try {
+            ovenLivekit.getUserMedia({
+                audio: true,
+                video: true
+            }).then(function (stream) {
+                setMediaStream(stream);
 
-            ovenLivekit.startStreaming('wss://audio.classiolabs.com/app/' + streamId + '?direction=send&transport=tcp');
-            stream.getVideoTracks().forEach(value => {
-                value.enabled = false;
-            })
-            stream.getAudioTracks()[0].enabled = false;
+                ovenLivekit.startStreaming('wss://audio.classiolabs.com/app/' + streamId + '?direction=send&transport=tcp');
+                stream.getVideoTracks().forEach(value => {
+                    value.enabled = false;
+                })
+                stream.getAudioTracks()[0].enabled = false;
 
-            // addStream();
+                // addStream();
 
-        });
+            });
+        } catch (e) {
+
+        }
     }
 
     function fetchMainStream() {
@@ -267,10 +317,10 @@ function Main() {
 
     }
 
-    function fetchAudioStreams() {
-        var msg = { "type": "fetchStreams" };
-        sendRoomMessage(JSON.stringify(msg));
-    }
+    // function fetchAudioStreams() {
+    //     var msg = { "type": "fetchStreams" };
+    //     sendRoomMessage(JSON.stringify(msg));
+    // }
 
 
     useEffect(() => {
@@ -345,13 +395,13 @@ function Main() {
 
         // }));
 
-        try {
-            if (audioStreams.length < 1) {
-                fetchAudioStreams();
-            }
-        } catch (e) {
+        // try {
+        //     if (audioStreams.length < 1) {
+        //         fetchAudioStreams();
+        //     }
+        // } catch (e) {
 
-        }
+        // }
 
 
     }
@@ -701,9 +751,36 @@ function Main() {
                             <Circle color={"#fafafa"} size={50} />
                         </Backdrop> : <ErrorModal />
                     }
+                   
                 </>
             }
-
+ <Dialog
+      sx={{
+        "& .MuiDialog-container": {
+            "& .MuiPaper-root": {
+                width: "20%",
+                maxWidth: "100%",  // Set your width here
+                height: "20%",
+                maxHeight: "100%",
+                margin: 0,
+                alignItems: "center",
+                justifyContent: "center"
+            },
+        },
+    }}
+        open={socketNetworkError}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {"Network Error"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Plase reload the page
+          </DialogContentText>
+        </DialogContent>
+      </Dialog>
         </div>
     );
 }
