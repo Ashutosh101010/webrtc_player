@@ -6,6 +6,7 @@ import {
     Box,
     Button,
     Dialog,
+    DialogActions,
     DialogContent,
     DialogContentText,
     DialogTitle,
@@ -811,13 +812,10 @@ function Main() {
                 sx={{
                     "& .MuiDialog-container": {
                         "& .MuiPaper-root": {
-                            width: "20%",
-                            maxWidth: "100%",  // Set your width here
-                            height: "20%",
+                            // width: "50%",
+                            maxWidth: "100%",
                             maxHeight: "100%",
                             margin: 0,
-                            alignItems: "center",
-                            justifyContent: "center"
                         },
                     },
                 }}
@@ -825,14 +823,16 @@ function Main() {
                 aria-labelledby="alert-dialog-title"
                 aria-describedby="alert-dialog-description"
             >
-                <DialogTitle id="alert-dialog-title">
-                    {"Network Error"}
+                <Box sx={{mr:8}}>
+                <DialogTitle id="alert-dialog-title" sx={{ fontSize: "25px", fontWeight: "bold" }}>
+                    {"Network Error !!"}
                 </DialogTitle>
                 <DialogContent>
-                    <DialogContentText id="alert-dialog-description">
-                        Plase reload the page
+                    <DialogContentText id="alert-dialog-description" sx={{ fontSize: "15px", fontWeight: "600" }}>
+                        Please reload the page
                     </DialogContentText>
                 </DialogContent>
+                </Box>
             </Dialog>
         </div>
     );
