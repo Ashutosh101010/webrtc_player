@@ -79,15 +79,16 @@ function Main() {
             participants.forEach((items) => {
                 if (parseInt(items.userId) === parseInt(userId)) {
 
+                    if(micAllowed!==items.micAllow)
+                    {
                         setMicAllowed(items.micAllow);
+                    }
 
-                        if(items.micAllow===true)
+                        if(micAllowed!==items.micAllow && items.micAllow===true)
                         {
                             setRaisedHandState(false);
                             var msg = {"type":  "unRaise"};
                             sendRoomMessage(JSON.stringify(msg));
-                        }else{
-                            setMic(false);
                         }
 
 
@@ -97,10 +98,14 @@ function Main() {
                         setStreamId(items.audioStreamId);
                     }
 
-                    if(items.micAllow===true)
+
+                    if(micAllowed===false)
                     {
-                        setMic(items.mute);
+                        setMic(false);
+                    }else{
+                    setMic(!items.mute);
                     }
+
 
 
                 }
@@ -109,9 +114,6 @@ function Main() {
 
     }, [participants])
 
-    useEffect(()=>{
-
-    },[mute])
 
     useEffect(() => {
         if (!available && streamId !== "") {
@@ -121,10 +123,13 @@ function Main() {
     useEffect(() => {
         checkVideo();
         if (roomSocketUrl !== "") {
+            if(!socketNetworkError)
+            {
             sendPing();
+            }
             if ((Date.now() - roomPing > 5000)) {
                 setSocketNetworkError(true);
-                connect();
+                // connect();
             }else{
                 setSocketNetworkError(false);
             }
@@ -148,8 +153,12 @@ function Main() {
 
 
     function sendPing() {
-        var object = {"type": "ping"};
-        sendRoomMessage(JSON.stringify(object));
+        if(!socketNetworkError)
+        {
+            var object = {"type": "ping"};
+            sendRoomMessage(JSON.stringify(object));
+        }
+
     }
 
     const getInstituteDetail = async () => {
@@ -278,7 +287,12 @@ function Main() {
     });
 
     const connectSocket = useCallback(
-        () => setRoomSocketUrl("wss://api.softkitesinfo.com/ws/room/" + liveId + "/" + userId + "/false"),
+
+        () => {
+            setRoomSocketUrl("");
+            var url="wss://api.softkitesinfo.com/ws/room/" + liveId + "/" + userId + "/false";
+            setRoomSocketUrl(url)
+        },
         []
     );
 
@@ -291,7 +305,9 @@ function Main() {
         lastMessage: roomLastMessage,
         readyState: roomReadyState,
     } = useWebSocket(roomSocketUrl, {
-
+        shouldReconnect: (closeEvent) => true,
+        reconnectAttempts: 10000,
+        reconnectInterval:2000,
         onOpen: () => {
             console.log('WebSocket room connection established.');
             // fetchMainStream();
@@ -370,9 +386,9 @@ function Main() {
 
                     ovenLivekit.startStreaming('wss://audio.classiolabs.com/app/' + streamId + '?direction=send&transport=tcp');
                     stream.getVideoTracks().forEach(value => {
-                        value.enabled = true;
+                        value.enabled = false;
                     })
-                    stream.getAudioTracks()[0].enabled = true;
+                    stream.getAudioTracks()[0].enabled = false;
 
                     // addStream();
 
@@ -480,7 +496,9 @@ function Main() {
 
     function raiseHand() {
         let raised = raisedHandState;
+
         setRaisedHandState(!raised)
+
         var msg = {"type": raised == true ? "unRaise" : "raiseHand"};
         sendRoomMessage(JSON.stringify(msg));
     }
@@ -580,21 +598,24 @@ function Main() {
         if (mediaStream !== undefined) {
             if (mediaStream.getAudioTracks()[0] !== undefined) {
                 if (mic) {
+
                     mediaStream.getAudioTracks()[0].enabled = true;
-                    sendMuteUnmuteMsg();
+                    // sendMuteUnmuteMsg();
                 }
                 else if (!mic) {
+
+
                     mediaStream.getAudioTracks()[0].enabled = false;
-                    sendMuteUnmuteMsg();
+                    // sendMuteUnmuteMsg();
                 }
             }
 
         }
     }, [mic])
 
-    function sendMuteUnmuteMsg()
+    function sendMuteUnmuteMsg(val)
     {
-        if(mic)
+        if(val)
         {
             var msg={"type":"unMute"}
             sendRoomMessage(JSON.stringify(msg));
@@ -608,12 +629,12 @@ function Main() {
             if (mic) {
                 setMic(false);
                 mediaStream.getAudioTracks()[0].enabled = false;
-                sendMuteUnmuteMsg();
+                sendMuteUnmuteMsg(false);
             }
             else {
                 setMic(true);
                 mediaStream.getAudioTracks()[0].enabled = true;
-                sendMuteUnmuteMsg();
+                sendMuteUnmuteMsg(true);
             }
         }
     }
@@ -866,7 +887,7 @@ function Main() {
                 </DialogTitle>
                 <DialogContent>
                     <DialogContentText id="alert-dialog-description" sx={{ fontSize: "15px", fontWeight: "600" }}>
-                        Please reload the page
+                        Reconnecting ....
                     </DialogContentText>
                 </DialogContent>
                 </Box>
