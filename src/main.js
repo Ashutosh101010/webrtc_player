@@ -77,18 +77,40 @@ function Main() {
         if (participants.length > 0) {
             participants.forEach((items) => {
                 if (parseInt(items.userId) === parseInt(userId)) {
-                    setMicAllowed(items.micAllow);
-                    setRaisedHandState(items.handRaise);
+
+                        setMicAllowed(items.micAllow);
+
+                        if(items.micAllow===true)
+                        {
+                            setRaisedHandState(false);
+                            var msg = {"type":  "unRaise"};
+                            sendRoomMessage(JSON.stringify(msg));
+                        }else{
+                            setMic(false);
+                        }
+
+
+
+
                     if (streamId === "") {
                         setStreamId(items.audioStreamId);
                     }
 
-                    setMic(items.mute);
+                    if(items.micAllow===true)
+                    {
+                        setMic(items.mute);
+                    }
+
+
                 }
             })
         }
 
     }, [participants])
+
+    useEffect(()=>{
+
+    },[mute])
 
     useEffect(() => {
         if (!available && streamId !== "") {
@@ -298,25 +320,25 @@ function Main() {
                 setMainStreamId(data.stream);
                 loadPlayer(data.stream);
             }
-            if (data.type === 'micAllowed') {
-                if (available) {
-                    setMic(false);
-                    setMicAllowed(true);
-
-                    setRaisedHandState(false);
-
-                }
-                // if (!available) {
-                //     initializeAudioStream();
-                // }
-
-            }
-            if (data.type === 'micDisallowed') {
-                setMic(false);
-                setMicAllowed(false);
-                // removeStream();
-
-            }
+            // if (data.type === 'micAllowed') {
+            //     if (available) {
+            //         setMic(false);
+            //         setMicAllowed(true);
+            //
+            //         setRaisedHandState(false);
+            //
+            //     }
+            //     // if (!available) {
+            //     //     initializeAudioStream();
+            //     // }
+            //
+            // }
+            // if (data.type === 'micDisallowed') {
+            //     setMic(false);
+            //     setMicAllowed(false);
+            //     // removeStream();
+            //
+            // }
             if (data.command === 'broadcastStream') {
                 console.log(data, streamId, data.userId, userId);
 
@@ -558,24 +580,39 @@ function Main() {
             if (mediaStream.getAudioTracks()[0] !== undefined) {
                 if (mic) {
                     mediaStream.getAudioTracks()[0].enabled = true;
+                    sendMuteUnmuteMsg();
                 }
                 else if (!mic) {
                     mediaStream.getAudioTracks()[0].enabled = false;
+                    sendMuteUnmuteMsg();
                 }
             }
+
         }
     }, [mic])
 
+    function sendMuteUnmuteMsg()
+    {
+        if(mic)
+        {
+            var msg={"type":"unMute"}
+            sendRoomMessage(JSON.stringify(msg));
+        }else{
+            var msg={"type":"mute"}
+            sendRoomMessage(JSON.stringify(msg));
+        }
+    }
     function muteUnmuteMic() {
-        console.log(mic, micAllowed, audioInputDevices);
         if (micAllowed && audioInputDevices.length > 0) {
             if (mic) {
                 setMic(false);
                 mediaStream.getAudioTracks()[0].enabled = false;
+                sendMuteUnmuteMsg();
             }
             else {
                 setMic(true);
                 mediaStream.getAudioTracks()[0].enabled = true;
+                sendMuteUnmuteMsg();
             }
         }
     }
