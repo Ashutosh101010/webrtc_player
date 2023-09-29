@@ -23,7 +23,8 @@ const MainModal = ({ fetchMainStream,onClose }) => {
             style: {
                 // width: '60%',
                 maxHeight: '90%',
-                margin: "10px"
+                margin: "10px",
+                overflow: "scroll"
             }
         }}>
             <Box sx={{ padding: "20px" }}>
