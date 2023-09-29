@@ -24,9 +24,9 @@ const MainModal = ({ fetchMainStream,onClose }) => {
                 // width: '60%',
                 maxHeight: '90%',
                 margin: "10px",
-                overflow: "scroll"
+                // overflow: "scroll"
             }
-        }}>
+        }} className="aaaaaaaaaaa">
             <Box sx={{ padding: "20px" }}>
                 <Grid container>
                     <Grid item xs={12} sm={12} md={12} lg={12} sx={{ display: "flex", justifyContent: "center", textAlign: "center" }}>

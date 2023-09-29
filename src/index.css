@@ -15,3 +15,6 @@ code {
 #mainStream{
   height: 100vh !important;
 }
+.css-1t1j96h-MuiPaper-root-MuiDialog-paper{
+overflow: scroll !important;
+}
