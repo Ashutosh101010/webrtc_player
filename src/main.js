@@ -474,10 +474,9 @@ setConnecting(false);
     //     sendRoomMessage(JSON.stringify(msg));
     // }
 
-
     useEffect(() => {
-        if (player != undefined)
-            player.setMute(true);
+        // if (player != undefined)
+        //     player.setMute(true);
 
 
     }, [player])
@@ -499,7 +498,7 @@ setConnecting(false);
                 },
 
             ],
-            // mute: false,
+            mute: false,
             autoStart: true,
             showBigPlayButton: false,
             expandFullScreenUI: false
@@ -508,8 +507,7 @@ setConnecting(false);
         videoPlayer.showControls(false)
         videoPlayer.setAutoQuality(true);
         setSelectedQuality('Auto');
-        // videoPlayer.setCurrentSource(3)
-        videoPlayer.setMute(false);
+    
         videoPlayer.on('stateChanged', function (data) {
             if (data?.newstate === "playing") {
                 setPlayPause(true)
@@ -530,6 +528,7 @@ setConnecting(false);
             }
 
         })
+
         setPlayer(videoPlayer);
         // setPlayer(OvenPlayer.create('mainStream', {
         //     sources: [
