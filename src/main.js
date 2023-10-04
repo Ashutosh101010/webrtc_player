@@ -366,6 +366,13 @@ function Main() {
             console.log('data', data);
             if (data.type === "students") {
                 setParticipants(data.students);
+                try{
+                    setEnableHandRaise(data.allowHandRaise);
+                }catch (e)
+                {
+
+                }
+
             }
             if (data.type === 'streams') {
                 let streams = [...currentStreams];
