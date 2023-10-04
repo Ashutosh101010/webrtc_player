@@ -285,20 +285,20 @@ function Main() {
     let ovenLivekit = OvenLiveKit.create({
         callbacks: {
             error: function (error) {
-                console.log("error", error);
-                setStreaming(false);
-                setMic(false);
+                // console.log("error", error);
+                // setStreaming(false);
+                // setMic(false);
             },
             connected: function (event) {
-                console.log("event", event);
+                // console.log("event", event);
                 // ovenLivekit.inputStream.getAudioTracks()[0].enabled;
-                setStreaming(true);
+                // setStreaming(true);
 
             },
             connectionClosed: function (type, event) {
-                console.log("close", type, event);
-                setStreaming(false);
-                setMic(false);
+                // console.log("close", type, event);
+                // setStreaming(false);
+                // setMic(false);
                 // initializeAudioStream();
             },
             iceStateChange: function (state) {
@@ -311,7 +311,7 @@ function Main() {
                         setRaisedHandState(false);
                         setStreaming(true);
                     }
-                    else if (state === 'closed' || state === 'failed') {
+                    else if (state === 'closed' || state === 'failed' || state==='disconnected') {
                         console.log("failed");
                         setAvailable(false);
                         // initializeAudioStream();
@@ -319,6 +319,7 @@ function Main() {
                         setMic(false);
                     }
                 } catch (e) {
+                    setAvailable(false);
                     setStreaming(false);
                     setMic(false);
                 }
@@ -422,7 +423,6 @@ function Main() {
     function initializeAudioStream() {
         console.log('connecting',connecting);
         if(connecting===false){
-
             if (streamId !== "") {
                 try {
 
@@ -433,9 +433,7 @@ function Main() {
                         setMediaStream(stream);
                         setConnecting(true);
                         ovenLivekit.startStreaming('wss://audio.classiolabs.com/app/' + streamId + '?direction=send&transport=tcp');
-                        stream.getTracks().forEach(function (track) {
-                            console.log(track.getSettings().deviceId, track.getSettings().kind);
-                        })
+
                         stream.getVideoTracks().forEach(value => {
                             value.enabled = false;
                         })
