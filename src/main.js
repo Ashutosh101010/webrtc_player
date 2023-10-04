@@ -28,6 +28,8 @@ import { Circle } from "styled-spinkit";
 import MainModal from './MainModal';
 import axios from 'axios';
 import ErrorModal from './ErrorModal';
+import { useTimer } from "react-use-precision-timer";
+
 
 var React = require('react');
 
@@ -71,14 +73,55 @@ function Main() {
     const maxRetry = 20;
     const [participants, setParticipants] = useState([]);
     const [roomPing, setRoomPing] = useState(Date.now());
-    const [ticking, setticking] = useState(true);
-    const [count, setCount] = useState(0);
+    // const [ticking, setticking] = useState(true);
+    // const [count, setCount] = useState(0);
     const [socketNetworkError, setSocketNetworkError] = useState(false);
     const [streaming, setStreaming] = useState(false);
     const [connecting,setConnecting]=useState(false);
-    const [ticking1, setticking1] = useState(true);
-    const [count1, setCount1] = useState(0);
+    // const [ticking1, setticking1] = useState(true);
+    // const [count1, setCount1] = useState(0);
     const [enabledHandRaise,setEnableHandRaise]=useState(false);
+
+
+    const callback = React.useCallback(() => {
+        if (streaming !== true && roomSocketUrl !== "") {
+
+            initializeAudioStream();
+        }
+
+    }, []);
+
+    const videoTimer = useTimer({ delay: 2000 }, callback);
+    const videoCallback = React.useCallback(() => {
+        checkVideo();
+        if (roomSocketUrl !== "") {
+            if (!socketNetworkError) {
+                sendPing();
+            }
+            if ((Date.now() - roomPing > 3000)) {
+                setSocketNetworkError(true);
+
+                setMic(false);
+                try{
+
+                    player.stop();
+                }catch (e)
+                {
+
+                }
+            }
+            else {
+                setSocketNetworkError(false);
+            }
+        }
+
+    }, []);
+
+    const streamTimer = useTimer({ delay: 3000 }, callback);
+
+    useEffect(()=>{
+        streamTimer.start();
+    },[])
     useEffect(() => {
         if (participants.length > 0) {
             participants.forEach((items) => {
@@ -127,46 +170,17 @@ function Main() {
             initializeAudioStream();
         }
     }, [streamId])
-    useEffect(() => {
-        checkVideo();
-        if (roomSocketUrl !== "") {
-            if (!socketNetworkError) {
-                sendPing();
-            }
-            if ((Date.now() - roomPing > 6000)) {
-                setSocketNetworkError(true);
+    // useEffect(() => {
+    //
+    //
+    //     // if (streaming !== true && roomSocketUrl !== "") {
+    //     //     console.log("useeffect stream", streaming, roomSocketUrl);
+    //     //     initializeAudioStream();
+    //     // }
+    //     const timer = setTimeout(() => ticking && setCount(count + 1), 2e3);
+    //     return () => clearTimeout(timer);
+    // }, [count, ticking]);
 
-                setMic(false);
-                try{
-
-                player.stop();
-                }catch (e)
-                {
-
-
-                }                // connect();
-            }
-            else {
-                setSocketNetworkError(false);
-            }
-        }
-
-        // if (streaming !== true && roomSocketUrl !== "") {
-        //     console.log("useeffect stream", streaming, roomSocketUrl);
-        //     initializeAudioStream();
-        // }
-        const timer = setTimeout(() => ticking && setCount(count + 1), 2e3);
-        return () => clearTimeout(timer);
-    }, [count, ticking]);
-    useEffect(() => {
-
-        if (streaming !== true && roomSocketUrl !== "") {
-
-            initializeAudioStream();
-        }
-        const timer = setTimeout(() => ticking1 && setCount1(count1 + 1), 5e3);
-        return () => clearTimeout(timer);
-    }, [count1, ticking1]);
 
     useEffect(() => {
         checkPlayerError();
