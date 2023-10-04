@@ -284,6 +284,7 @@ function Main() {
         }
 
     }
+    
 
     let ovenLivekit = OvenLiveKit.create({
         callbacks: {
@@ -297,7 +298,7 @@ function Main() {
                 // ovenLivekit.inputStream.getAudioTracks()[0].enabled;
                 // setStreaming(true);
 
-            },
+            }, 
             connectionClosed: function (type, event) {
                 // console.log("close", type, event);
                 // setStreaming(false);
