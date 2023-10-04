@@ -89,16 +89,16 @@ function Main() {
             initializeAudioStream();
         }
 
-    }, []);
+    });
 
-    const videoTimer = useTimer({ delay: 2000 }, callback);
     const videoCallback = React.useCallback(() => {
+        
         checkVideo();
         if (roomSocketUrl !== "") {
             if (!socketNetworkError) {
                 sendPing();
             }
-            if ((Date.now() - roomPing > 3000)) {
+            if ((Date.now() - roomPing > 5000)) {
                 setSocketNetworkError(true);
 
                 setMic(false);
@@ -115,12 +115,14 @@ function Main() {
             }
         }
 
-    }, []);
+    });
+    const videoTimer = useTimer({ delay: 2000 }, videoCallback);
 
     const streamTimer = useTimer({ delay: 3000 }, callback);
 
     useEffect(()=>{
         streamTimer.start();
+        videoTimer.start();
     },[])
     useEffect(() => {
         if (participants.length > 0) {
@@ -191,6 +193,7 @@ function Main() {
 
 
     function sendPing() {
+        console.log('ping');
         if (!socketNetworkError) {
             var object = {"type": "ping"};
             sendRoomMessage(JSON.stringify(object));
@@ -496,7 +499,7 @@ setConnecting(false);
                 },
 
             ],
-            mute: false,
+            // mute: false,
             autoStart: true,
             showBigPlayButton: false,
             expandFullScreenUI: false
@@ -506,7 +509,7 @@ setConnecting(false);
         videoPlayer.setAutoQuality(true);
         setSelectedQuality('Auto');
         // videoPlayer.setCurrentSource(3)
-        // videoPlayer.setMute(false);
+        videoPlayer.setMute(false);
         videoPlayer.on('stateChanged', function (data) {
             if (data?.newstate === "playing") {
                 setPlayPause(true)
@@ -838,6 +841,8 @@ setConnecting(false);
         // initializeAudioStream();
         connect();
     };
+
+    console.log('moduleSetting', moduleSetting);
     return (
         <div className="App">
             {
@@ -878,9 +883,9 @@ setConnecting(false);
                             <Box sx={{position: "absolute", bottom: "0", left: "0", right: "0"}}>
                                 <div style={{display: style ? "block" : "none", background: "rgba(0, 0, 0, 0.35)"}}>
                                     <Button onClick={() => { raiseHand() }}
-                                            disabled={moduleSetting?.raiseHand === true ? false : true}>
+                                            disabled={moduleSetting?.raiseHand === true || enabledHandRaise === true ? false : true}>
                                         <PanToolIcon
-                                            sx={{color: moduleSetting?.raiseHand === false ? "#cccccc7a" : raisedHandState ? "green" : '#fff'}}/>
+                                            sx={{color: moduleSetting?.raiseHand === false || enabledHandRaise === false ? "#cccccc7a" : raisedHandState ? "green" : '#fff'}}/>
                                     </Button>
                                     {!playPause ?
                                         <Button onClick={handlePlay}><PlayArrowIcon sx={{color: '#fff'}}/></Button>
