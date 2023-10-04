@@ -6,7 +6,6 @@ import {
     Box,
     Button,
     Dialog,
-    DialogActions,
     DialogContent,
     DialogContentText,
     DialogTitle,
@@ -32,8 +31,10 @@ import ErrorModal from './ErrorModal';
 
 var React = require('react');
 
-const STUDENT_DETAIL_URL = "https://api.softkitesinfo.com/student/fetch-details";
-const FETCH_INSTITUTE_URL = "https://api.softkitesinfo.com/getMetaData/fetch-institute"
+// const STUDENT_DETAIL_URL = "https://api.softkitesinfo.com/student/fetch-details";
+// const FETCH_INSTITUTE_URL = "https://api.softkitesinfo.com/getMetaData/fetch-institute"
+const STUDENT_DETAIL_URL = "https://prodapi.classiolabs.com/student/fetch-details";
+const FETCH_INSTITUTE_URL = "https://prodapi.classiolabs.com/getMetaData/fetch-institute"
 
 function Main() {
     const [player, setPlayer] = useState();
@@ -74,24 +75,29 @@ function Main() {
     const [count, setCount] = useState(0);
     const [socketNetworkError, setSocketNetworkError] = useState(false);
     const [streaming, setStreaming] = useState(false);
+    const [connecting,setConnecting]=useState(false);
+    const [ticking1, setticking1] = useState(true);
+    const [count1, setCount1] = useState(0);
+    const [enabledHandRaise,setEnableHandRaise]=useState(false);
     useEffect(() => {
         if (participants.length > 0) {
             participants.forEach((items) => {
                 if (parseInt(items.userId) === parseInt(userId)) {
+
 
                     if(micAllowed!==items.micAllow)
                     {
                         setMicAllowed(items.micAllow);
                     }
 
-                        if(micAllowed!==items.micAllow && items.micAllow===true)
-                        {
-                            setRaisedHandState(false);
-                            var msg = {"type":  "unRaise"};
-                            sendRoomMessage(JSON.stringify(msg));
-                        }
 
 
+
+                    if (micAllowed !== items.micAllow && items.micAllow === true) {
+                        setRaisedHandState(false);
+                        var msg = {"type": "unRaise"};
+                        sendRoomMessage(JSON.stringify(msg));
+                    }
 
 
                     if (streamId === "") {
@@ -103,8 +109,9 @@ function Main() {
                     {
                         setMic(false);
                     }else{
-                    setMic(!items.mute);
+                        setMic(!items.mute);
                     }
+
 
 
 
@@ -116,33 +123,50 @@ function Main() {
 
 
     useEffect(() => {
-        if (!available && streamId !== "") {
+        if (!available && streamId !== "" && socketNetworkError!==false) {
             initializeAudioStream();
         }
     }, [streamId])
     useEffect(() => {
         checkVideo();
         if (roomSocketUrl !== "") {
-            if(!socketNetworkError)
-            {
-            sendPing();
+            if (!socketNetworkError) {
+                sendPing();
             }
-            if ((Date.now() - roomPing > 5000)) {
+            if ((Date.now() - roomPing > 6000)) {
                 setSocketNetworkError(true);
-                // connect();
-            }else{
+
+                setMic(false);
+                try{
+
+                player.stop();
+                }catch (e)
+                {
+
+
+                }                // connect();
+            }
+            else {
                 setSocketNetworkError(false);
             }
         }
 
-        if(!streaming && roomSocketUrl!=="")
-        {
-            console.log("useeffect stream",streaming,roomSocketUrl);
-            initializeAudioStream();
-        }
+        // if (streaming !== true && roomSocketUrl !== "") {
+        //     console.log("useeffect stream", streaming, roomSocketUrl);
+        //     initializeAudioStream();
+        // }
         const timer = setTimeout(() => ticking && setCount(count + 1), 2e3);
         return () => clearTimeout(timer);
     }, [count, ticking]);
+    useEffect(() => {
+
+        if (streaming !== true && roomSocketUrl !== "") {
+
+            initializeAudioStream();
+        }
+        const timer = setTimeout(() => ticking1 && setCount1(count1 + 1), 5e3);
+        return () => clearTimeout(timer);
+    }, [count1, ticking1]);
 
     useEffect(() => {
         checkPlayerError();
@@ -153,8 +177,7 @@ function Main() {
 
 
     function sendPing() {
-        if(!socketNetworkError)
-        {
+        if (!socketNetworkError) {
             var object = {"type": "ping"};
             sendRoomMessage(JSON.stringify(object));
         }
@@ -199,16 +222,15 @@ function Main() {
 
     function checkVideo() {
         try {
-            if(player!==undefined)
-            {
-            if (player.getState() === 'error') {
-                loadPlayer(mainStreamId);
-            }
-            if (player.getState() !== 'playing') {
-                if (!pause) {
-                    player.play();
+            if (player !== undefined) {
+                if (player.getState() === 'error') {
+                    loadPlayer(mainStreamId);
                 }
-            }
+                if (player.getState() !== 'playing') {
+                    if (!pause) {
+                        player.play();
+                    }
+                }
             }
         } catch (e) {
             console.log(e);
@@ -250,7 +272,8 @@ function Main() {
         callbacks: {
             error: function (error) {
                 console.log("error", error);
-                // setStreaming(false);
+                setStreaming(false);
+                setMic(false);
             },
             connected: function (event) {
                 console.log("event", event);
@@ -261,6 +284,7 @@ function Main() {
             connectionClosed: function (type, event) {
                 console.log("close", type, event);
                 setStreaming(false);
+                setMic(false);
                 // initializeAudioStream();
             },
             iceStateChange: function (state) {
@@ -269,7 +293,7 @@ function Main() {
                     if (state === 'connected') {
                         // addStream();
                         setAvailable(true);
-                        setMicAllowed(true);
+                        // setMicAllowed(true);
                         setRaisedHandState(false);
                         setStreaming(true);
                     }
@@ -278,19 +302,20 @@ function Main() {
                         setAvailable(false);
                         // initializeAudioStream();
                         setStreaming(false);
+                        setMic(false);
                     }
                 } catch (e) {
                     setStreaming(false);
+                    setMic(false);
                 }
             }
         }
     });
 
     const connectSocket = useCallback(
-
         () => {
             setRoomSocketUrl("");
-            var url="wss://api.softkitesinfo.com/ws/room/" + liveId + "/" + userId + "/false";
+            var url = "wss://prodapi.classiolabs.com/ws/room/" + liveId + "/" + userId + "/false";
             setRoomSocketUrl(url)
         },
         []
@@ -307,7 +332,7 @@ function Main() {
     } = useWebSocket(roomSocketUrl, {
         shouldReconnect: (closeEvent) => true,
         reconnectAttempts: 10000,
-        reconnectInterval:2000,
+        reconnectInterval: 2000,
         onOpen: () => {
             console.log('WebSocket room connection established.');
             // fetchMainStream();
@@ -315,7 +340,12 @@ function Main() {
         }
         ,
         onMessage: (message) => {
+            if(socketNetworkError===true)
+            {
+                window.location.reload();
+            }
             setRoomPing(Date.now());
+
             const data = JSON.parse(message.data);
             // checkVideo();
             console.log('data', data);
@@ -376,27 +406,39 @@ function Main() {
     // }
 
     function initializeAudioStream() {
-        if(streamId!==""){
-            try {
-                ovenLivekit.getUserMedia({
-                    audio: true,
-                    video: true
-                }).then(function (stream) {
-                    setMediaStream(stream);
+        console.log('connecting',connecting);
+        if(connecting===false){
 
-                    ovenLivekit.startStreaming('wss://audio.classiolabs.com/app/' + streamId + '?direction=send&transport=tcp');
-                    stream.getVideoTracks().forEach(value => {
-                        value.enabled = false;
-                    })
-                    stream.getAudioTracks()[0].enabled = false;
+            if (streamId !== "") {
+                try {
 
-                    // addStream();
+                    ovenLivekit.getUserMedia({
+                        audio: {sampleSize:8},
+                        video: true
+                    }).then(function (stream) {
+                        setMediaStream(stream);
+                        setConnecting(true);
+                        ovenLivekit.startStreaming('wss://audio.classiolabs.com/app/' + streamId + '?direction=send&transport=tcp');
+                        stream.getTracks().forEach(function (track) {
+                            console.log(track.getSettings().deviceId, track.getSettings().kind);
+                        })
+                        stream.getVideoTracks().forEach(value => {
+                            value.enabled = false;
+                        })
+                        // stream.getAudioTracks().forEach((device)=>{
+                        //     device.enabled=false;
+                        // })
 
-                });
-            } catch (e) {
+                        // addStream();
 
+                    });
+                } catch (e) {
+setConnecting(false);
+                }
+                setConnecting(false);
             }
         }
+
     }
 
     function fetchMainStream() {
@@ -524,22 +566,22 @@ function Main() {
     //     }
     //
     // }
-
-    useEffect(() => {
-        navigator.mediaDevices.enumerateDevices().then(devices => {
-            console.log(devices);
-            let newArr = [];
-            devices.forEach(device => {
-                if (device) {
-                    if ((device.deviceId !== '' || device.deviceId !== undefined) && device.kind == 'audioinput') {
-
-                        newArr.push(device)
-                        setAudioInputDevices(newArr)
-                    }
-                }
-            })
-        })
-    }, []);
+    //
+    // useEffect(() => {
+    //     navigator.mediaDevices.enumerateDevices().then(devices => {
+    //         console.log(devices);
+    //         let newArr = [];
+    //         devices.forEach(device => {
+    //             if (device) {
+    //                 if ((device.deviceId !== '' || device.deviceId !== undefined) && device.kind == 'audioinput') {
+    //
+    //                     newArr.push(device)
+    //                     setAudioInputDevices(newArr)
+    //                 }
+    //             }
+    //         })
+    //     })
+    // }, []);
     //
     // useEffect(() => {
     //     let tempMap = audioStreamMap.size > 0 ? audioStreamMap : new Map();
@@ -593,50 +635,115 @@ function Main() {
     //     }
     // }, [audioStreams])
 
-
     useEffect(() => {
         if (mediaStream !== undefined) {
-            if (mediaStream.getAudioTracks()[0] !== undefined) {
+            if (micAllowed && mic === true) {
+                enableAudioStream();
+            }
+            else {
+                disableAudioStream();
+            }
+        }
+    }, [mediaStream])
+
+    useEffect(() => {
+        try {
+            if (mediaStream !== undefined) {
                 if (mic) {
 
-                    mediaStream.getAudioTracks()[0].enabled = true;
+                    // mediaStream.getAudioTracks()[0].enabled = true;
                     // sendMuteUnmuteMsg();
+                    enableAudioStream();
                 }
                 else if (!mic) {
 
 
-                    mediaStream.getAudioTracks()[0].enabled = false;
+                    // mediaStream.getAudioTracks()[0].enabled = false;
                     // sendMuteUnmuteMsg();
+                    disableAudioStream();
                 }
             }
 
+            if(streaming===false)
+            {
+                setMic(false);
+                disableAudioStream();
+                sendMuteUnmuteMsg(false);
+            }
+
+        } catch (e) {
+
         }
+
     }, [mic])
 
-    function sendMuteUnmuteMsg(val)
-    {
-        if(val)
-        {
-            var msg={"type":"unMute"}
+
+    function enableAudioStream() {
+        try {
+            if (mediaStream !== undefined) {
+
+                mediaStream.getAudioTracks().forEach((device) => {
+                    try {
+                        device.enabled = true;
+                    } catch (e) {
+                        console.log('error', e);
+                    }
+                })
+            }
+        } catch (e) {
+            console.log('error', e);
+
+        }
+    }
+
+    function disableAudioStream() {
+        try {
+            if (mediaStream !== undefined) {
+                mediaStream.getAudioTracks().forEach((device) => {
+                    try {
+                        device.enabled = false;
+                    } catch (e) {
+                        console.log('error', e);
+
+                    }
+                })
+            }
+        } catch (e) {
+            console.log('error', e);
+
+        }
+    }
+
+    function sendMuteUnmuteMsg(val) {
+        if (val) {
+            var msg = {"type": "unMute"}
             sendRoomMessage(JSON.stringify(msg));
-        }else{
-            var msg={"type":"mute"}
+        }
+        else {
+            var msg = {"type": "mute"}
             sendRoomMessage(JSON.stringify(msg));
         }
     }
+
     function muteUnmuteMic() {
-        if (micAllowed && audioInputDevices.length > 0) {
+        console.log("mute umute press")
+        if (micAllowed) {
             if (mic) {
                 setMic(false);
-                mediaStream.getAudioTracks()[0].enabled = false;
+                disableAudioStream();
+                // mediaStream.getAudioTracks()[0].enabled = false;
+
                 sendMuteUnmuteMsg(false);
             }
             else {
                 setMic(true);
-                mediaStream.getAudioTracks()[0].enabled = true;
+                // mediaStream.getAudioTracks()[0].enabled = true;
+                enableAudioStream();
                 sendMuteUnmuteMsg(true);
             }
         }
+
+
     }
 
     const handlePlay = () => {
@@ -771,7 +878,7 @@ function Main() {
                                     }
                                     <Button onClick={() => { muteUnmuteMic() }}>
                                         {
-                                            !micAllowed ? <MicOffIcon sx={{color: "#cccccc7a"}}/> :
+                                            (micAllowed===false) ? <MicOffIcon sx={{color: "#cccccc7a"}}/> :
                                                 mic ?
                                                     <MicIcon sx={{color: '#fff'}}/>
                                                     :
@@ -881,15 +988,15 @@ function Main() {
                 aria-labelledby="alert-dialog-title"
                 aria-describedby="alert-dialog-description"
             >
-                <Box sx={{mr:8}}>
-                <DialogTitle id="alert-dialog-title" sx={{ fontSize: "25px", fontWeight: "bold" }}>
-                    {"Network Error !!"}
-                </DialogTitle>
-                <DialogContent>
-                    <DialogContentText id="alert-dialog-description" sx={{ fontSize: "15px", fontWeight: "600" }}>
-                        Reconnecting ....
-                    </DialogContentText>
-                </DialogContent>
+                <Box sx={{mr: 8}}>
+                    <DialogTitle id="alert-dialog-title" sx={{fontSize: "25px", fontWeight: "bold"}}>
+                        {"Your network connection is weak"}
+                    </DialogTitle>
+                    <DialogContent>
+                        <DialogContentText id="alert-dialog-description" sx={{fontSize: "15px", fontWeight: "600"}}>
+                            Trying to Reconnect
+                        </DialogContentText>
+                    </DialogContent>
                 </Box>
             </Dialog>
         </div>
