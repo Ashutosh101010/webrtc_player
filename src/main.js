@@ -82,21 +82,21 @@ function Main() {
     // const [count1, setCount1] = useState(0);
     const [enabledHandRaise,setEnableHandRaise]=useState(false);
 
-
+    //
     const callback = React.useCallback(() => {
         if (streaming !== true && roomSocketUrl !== "") {
-
             initializeAudioStream();
         }
 
     });
 
     const videoCallback = React.useCallback(() => {
-        
-        checkVideo();
+
+
         if (roomSocketUrl !== "") {
             if (!socketNetworkError) {
                 sendPing();
+                checkVideo();
             }
             if ((Date.now() - roomPing > 5000)) {
                 setSocketNetworkError(true);
@@ -112,13 +112,14 @@ function Main() {
             }
             else {
                 setSocketNetworkError(false);
+
             }
         }
 
     });
     const videoTimer = useTimer({ delay: 2000 }, videoCallback);
 
-    const streamTimer = useTimer({ delay: 3000 }, callback);
+    const streamTimer = useTimer({ delay: 5000 }, callback);
 
     useEffect(()=>{
         streamTimer.start();
@@ -284,7 +285,7 @@ function Main() {
         }
 
     }
-    
+
 
     let ovenLivekit = OvenLiveKit.create({
         callbacks: {
@@ -292,13 +293,14 @@ function Main() {
                 // console.log("error", error);
                 // setStreaming(false);
                 // setMic(false);
+                setConnecting(false);
             },
             connected: function (event) {
                 // console.log("event", event);
                 // ovenLivekit.inputStream.getAudioTracks()[0].enabled;
                 // setStreaming(true);
 
-            }, 
+            },
             connectionClosed: function (type, event) {
                 // console.log("close", type, event);
                 // setStreaming(false);
@@ -311,6 +313,7 @@ function Main() {
                     if (state === 'connected') {
                         // addStream();
                         setAvailable(true);
+                        setConnecting(false);
                         // setMicAllowed(true);
                         setRaisedHandState(false);
                         setStreaming(true);
@@ -320,11 +323,13 @@ function Main() {
                         setAvailable(false);
                         // initializeAudioStream();
                         setStreaming(false);
+                        setConnecting(false);
                         setMic(false);
                     }
                 } catch (e) {
                     setAvailable(false);
                     setStreaming(false);
+                    setConnecting(false);
                     setMic(false);
                 }
             }
@@ -432,7 +437,7 @@ function Main() {
     // }
 
     function initializeAudioStream() {
-        console.log('connecting',connecting);
+        console.log('connecting',connecting,streamId);
         if(connecting===false){
             if (streamId !== "") {
                 try {
@@ -456,6 +461,7 @@ function Main() {
 
                     });
                 } catch (e) {
+                    console.log(e);
 setConnecting(false);
                 }
                 setConnecting(false);
@@ -508,7 +514,7 @@ setConnecting(false);
         videoPlayer.showControls(false)
         videoPlayer.setAutoQuality(true);
         setSelectedQuality('Auto');
-    
+
         videoPlayer.on('stateChanged', function (data) {
             if (data?.newstate === "playing") {
                 setPlayPause(true)
@@ -944,6 +950,7 @@ setConnecting(false);
                                     {/*        </Button>*/}
                                     {/*        : ""*/}
                                     {/*}*/}
+
                                     <Button disabled={moduleSetting?.quality === true ? false : true}>
                                         <SettingsIcon
                                             sx={{color: moduleSetting?.quality === true ? '#fff' : "#cccccc7a"}}
