@@ -125,6 +125,38 @@ function Main() {
         streamTimer.start();
         videoTimer.start();
     },[])
+
+    useEffect(() => {
+        if (mediaStream !== undefined) {
+            const audioContext = new AudioContext();
+            const analyser = audioContext.createAnalyser();
+
+            const microphone = audioContext.createMediaStreamSource(mediaStream);
+
+            analyser.smoothingTimeConstant = 0.1;
+            analyser.fftSize = 512;
+
+            microphone.connect(analyser);
+
+            const audioInterval = setInterval(() => {
+
+
+                const array = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(array);
+                const arraySum = array.reduce((a, value) => a + value, 0);
+                const average = arraySum / array.length;
+                if (average > 10) {
+                    var msg = {"type": "audiolevel", "level": average};
+                    sendRoomMessage(JSON.stringify(msg));
+                }
+               
+              
+
+
+            }, 500);
+        }
+
+    }, [mediaStream])
     useEffect(() => {
         if (participants.length > 0) {
             participants.forEach((items) => {
@@ -372,7 +404,7 @@ function Main() {
 
             const data = JSON.parse(message.data);
             // checkVideo();
-            console.log('data', data);
+            console.log('data====', data);
             if (data.type === "students") {
                 setParticipants(data.students);
                 try{
