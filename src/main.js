@@ -146,7 +146,7 @@ function Main() {
                 const arraySum = array.reduce((a, value) => a + value, 0);
                 const average = arraySum / array.length;
                 if (average > 10) {
-                    var msg = {"type": "audiolevel", "data": average};
+                    var msg = {"type": "audioLevel", "data": average};
                     sendRoomMessage(JSON.stringify(msg));
                 }
                
