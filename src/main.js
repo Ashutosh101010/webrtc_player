@@ -63,7 +63,7 @@ function Main() {
     const [currentStreams, setCurrentStreams] = useState([]);
     const [available, setAvailable] = useState(false);
     const playerQuality = [
-        "Auto", "4k", "1080p", "720p", "480p", "360p"
+        "Auto", "4k", "1080p", "720p", "480p", "360p","240p"
     ]
     const [selectedQuality, setSelectedQuality] = useState("Auto");
     const [pause, setPause] = useState(false);
@@ -91,8 +91,6 @@ function Main() {
     });
 
     const videoCallback = React.useCallback(() => {
-
-
         if (roomSocketUrl !== "") {
             if (!socketNetworkError) {
                 sendPing();
@@ -149,8 +147,8 @@ function Main() {
                     var msg = {"type": "audioLevel", "data": average};
                     sendRoomMessage(JSON.stringify(msg));
                 }
-               
-              
+
+
 
 
             }, 500);
