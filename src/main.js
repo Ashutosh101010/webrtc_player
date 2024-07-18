@@ -1,6 +1,6 @@
 import './App.css';
 import OvenPlayer from 'ovenplayer';
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     Backdrop,
     Box,
@@ -15,7 +15,6 @@ import {
 } from "@mui/material";
 import OvenLiveKit from 'ovenlivekit'
 import { useLocation, useParams } from "react-router-dom";
-import useWebSocket from 'react-use-websocket';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { Pause } from '@mui/icons-material';
 import PanToolIcon from '@mui/icons-material/PanTool';
@@ -28,7 +27,6 @@ import { Circle } from "styled-spinkit";
 import MainModal from './MainModal';
 import axios from 'axios';
 import ErrorModal from './ErrorModal';
-import { useTimer } from "react-use-precision-timer";
 
 
 var React = require('react');
@@ -63,66 +61,69 @@ function Main() {
     const [currentStreams, setCurrentStreams] = useState([]);
     const [available, setAvailable] = useState(false);
     const playerQuality = [
-        "Auto", "4k", "1080p", "720p", "480p", "360p","240p"
+        "Auto", "4k", "1080p", "720p", "480p", "360p", "240p"
     ]
     const [selectedQuality, setSelectedQuality] = useState("Auto");
     const [pause, setPause] = useState(false);
     const [instituteList, setInstituteList] = useState([]);
     const moduleSetting = instituteList?.institute?.instituteModuleSetting;
-    const [retry, setRetry] = useState(0);
-    const maxRetry = 20;
+
     const [participants, setParticipants] = useState([]);
-    const [roomPing, setRoomPing] = useState(Date.now());
-    // const [ticking, setticking] = useState(true);
-    // const [count, setCount] = useState(0);
+    // const [roomPing, setRoomPing] = useState(Date.now());
+
     const [socketNetworkError, setSocketNetworkError] = useState(false);
     const [streaming, setStreaming] = useState(false);
-    const [connecting,setConnecting]=useState(false);
-    // const [ticking1, setticking1] = useState(true);
-    // const [count1, setCount1] = useState(0);
-    const [enabledHandRaise,setEnableHandRaise]=useState(false);
+    const [connecting, setConnecting] = useState(false);
+    const [enabledHandRaise, setEnableHandRaise] = useState(false);
+    const workerRef = useRef(null);
 
-    //
-    const callback = React.useCallback(() => {
-        if (streaming !== true && roomSocketUrl !== "") {
-            initializeAudioStream();
-        }
+    useEffect(() => {
+        workerRef.current = new Worker(new URL('./websocketworker.jsx', import.meta.url));
 
-    });
 
-    const videoCallback = React.useCallback(() => {
-        if (roomSocketUrl !== "") {
-            if (!socketNetworkError) {
-                sendPing();
-                checkVideo();
+        connectWebsocket();
+        let metaObject = {};
+        metaObject.type = 'meta';
+        metaObject.userId = userId;
+        workerRef.current.postMessage(metaObject);
+        // if (streaming !== true && roomSocketUrl !== "") {
+        //     initializeAudioStream();
+        // }
+    }, [])
+
+
+    if (workerRef.current !== undefined && workerRef.current !== null) {
+        workerRef.current.onmessage = function (event) {
+            let message = event.data;
+            if (message.type === 'websocketMessage') {
+                handleWebsocketMessage(message.data);
             }
-            if ((Date.now() - roomPing > 5000)) {
-                setSocketNetworkError(true);
+            if (message.type === 'websocketError') {
+                setSocketNetworkError(message.data);
 
-                setMic(false);
-                try{
-
-                    player.stop();
-                }catch (e)
+                setAvailable(false);
+                if(message.data)
                 {
-
+                    // checkAudioStream();
                 }
             }
-            else {
-                setSocketNetworkError(false);
 
-            }
-        }
+        };
+    }
 
-    });
-    const videoTimer = useTimer({ delay: 2000 }, videoCallback);
+    function connectWebsocket() {
+        var startObject = {};
+        startObject.type = 'start';
+        startObject.data = "wss://prodapi.classiolabs.com/ws/room/" + liveId + "/" + userId + "/false";
+        workerRef.current.postMessage(startObject);
+    }
 
-    const streamTimer = useTimer({ delay: 5000 }, callback);
-
-    useEffect(()=>{
-        streamTimer.start();
-        videoTimer.start();
-    },[])
+    function sendRoomMessage(data) {
+        var object = {};
+        object.type = "send";
+        object.data = data;
+        workerRef.current.postMessage(object);
+    }
 
     useEffect(() => {
         if (mediaStream !== undefined) {
@@ -138,7 +139,6 @@ function Main() {
 
             const audioInterval = setInterval(() => {
 
-
                 const array = new Uint8Array(analyser.frequencyBinCount);
                 analyser.getByteFrequencyData(array);
                 const arraySum = array.reduce((a, value) => a + value, 0);
@@ -147,9 +147,6 @@ function Main() {
                     var msg = {"type": "audioLevel", "data": average};
                     sendRoomMessage(JSON.stringify(msg));
                 }
-
-
-
 
             }, 500);
         }
@@ -161,13 +158,9 @@ function Main() {
                 if (parseInt(items.userId) === parseInt(userId)) {
 
 
-                    if(micAllowed!==items.micAllow)
-                    {
+                    if (micAllowed !== items.micAllow) {
                         setMicAllowed(items.micAllow);
                     }
-
-
-
 
                     if (micAllowed !== items.micAllow && items.micAllow === true) {
                         setRaisedHandState(false);
@@ -180,17 +173,12 @@ function Main() {
                         setStreamId(items.audioStreamId);
                     }
 
-
-                    if(micAllowed===false)
-                    {
+                    if (micAllowed === false) {
                         setMic(false);
-                    }else{
+                    }
+                    else {
                         setMic(!items.mute);
                     }
-
-
-
-
                 }
             })
         }
@@ -199,9 +187,9 @@ function Main() {
 
 
     useEffect(() => {
-        if (!available && streamId !== "" && socketNetworkError!==false) {
-            initializeAudioStream();
-        }
+        // if (!available && streamId !== "" && socketNetworkError !== true) {
+        //     initializeAudioStream();
+        // }
     }, [streamId])
     // useEffect(() => {
     //
@@ -296,7 +284,6 @@ function Main() {
     }
 
     function checkPlayerError() {
-
         try {
             Array.from(audioStreamMap.keys()).map(key => {
                 let value = audioStreamMap.get(parseInt(key));
@@ -307,38 +294,32 @@ function Main() {
         } catch (e) {
 
         }
-
-        try {
-
-        } catch (e) {
-
-        }
-
     }
-
 
     let ovenLivekit = OvenLiveKit.create({
         callbacks: {
             error: function (error) {
-                // console.log("error", error);
+                console.log("stream error", error);
                 // setStreaming(false);
                 // setMic(false);
                 setConnecting(false);
+                setAvailable(false);
             },
             connected: function (event) {
                 // console.log("event", event);
                 // ovenLivekit.inputStream.getAudioTracks()[0].enabled;
                 // setStreaming(true);
-
+                setAvailable(true);
             },
             connectionClosed: function (type, event) {
-                // console.log("close", type, event);
+                console.log("stream close", type, event);
                 // setStreaming(false);
                 // setMic(false);
                 // initializeAudioStream();
+                setAvailable(false);
             },
             iceStateChange: function (state) {
-                console.log("state", state);
+                console.log("stream state", state);
                 try {
                     if (state === 'connected') {
                         // addStream();
@@ -348,132 +329,107 @@ function Main() {
                         setRaisedHandState(false);
                         setStreaming(true);
                     }
-                    else if (state === 'closed' || state === 'failed' || state==='disconnected') {
-                        console.log("failed");
+                    else if (state === 'closed' || state === 'failed' || state === 'disconnected') {
+                        console.log("stream failed");
                         setAvailable(false);
                         // initializeAudioStream();
                         setStreaming(false);
                         setConnecting(false);
                         setMic(false);
+                        // checkAudioStream();
                     }
                 } catch (e) {
+                    console.log("stream",e);
                     setAvailable(false);
                     setStreaming(false);
                     setConnecting(false);
                     setMic(false);
+
                 }
             }
         }
     });
 
-    const connectSocket = useCallback(
-        () => {
-            setRoomSocketUrl("");
-            var url = "wss://prodapi.classiolabs.com/ws/room/" + liveId + "/" + userId + "/false";
-            setRoomSocketUrl(url)
-        },
-        []
-    );
 
-    function connect() {
-        connectSocket();
+    function handleWebsocketMessage(data) {
+        checkVideo();
+        sendPing();
+
+        if (data.type === "students") {
+            setParticipants(data.students);
+            try {
+                setEnableHandRaise(data.allowHandRaise);
+            } catch (e) {
+
+            }
+
+        }
+        if (data.type === 'streams') {
+            let streams = [...currentStreams];
+            data.streams.forEach(value => {
+                if (!streams.includes(value.toString())) {
+                    console.log('push');
+                    streams.push(value.toString());
+                    setCurrentStreams(streams);
+                }
+            });
+            setAudioStreams(data.streams);
+        }
+        if (data.type === 'mainStream') {
+            let streamId = parseInt(data.stream);
+            setMainStreamId(streamId);
+            loadPlayer(streamId);
+            checkAudioStream();
+
+        }
+        if (data.type === 'micAllowed') {
+            if (available) {
+                setMic(false);
+                setMicAllowed(true);
+
+                setRaisedHandState(false);
+
+            }
+
+
+        }
+        if (data.type === 'micDisallowed') {
+            setMic(false);
+            setMicAllowed(false);
+            // removeStream();
+
+        }
+        if (data.command === 'broadcastStream') {
+            console.log(data, streamId, data.userId, userId);
+
+            if (!(data.userId.toString() === userId)) {
+                setAudioStreams([...audioStreams, data.streamId]);
+            }
+
+        }
+
+
     }
 
-    const {
-        sendMessage: sendRoomMessage,
-        lastMessage: roomLastMessage,
-        readyState: roomReadyState,
-    } = useWebSocket(roomSocketUrl, {
-        shouldReconnect: (closeEvent) => true,
-        reconnectAttempts: 10000,
-        reconnectInterval: 2000,
-        onOpen: () => {
-            console.log('WebSocket room connection established.');
-            // fetchMainStream();
+    function checkAudioStream()
+    {
+        if (!available && !connecting && micAllowed) {
+            ovenLivekit.remove();
             // initializeAudioStream();
+            setTimeout(initializeAudioStream(),4000);
         }
-        ,
-        onMessage: (message) => {
-            if(socketNetworkError===true)
-            {
-                window.location.reload();
-            }
-            setRoomPing(Date.now());
-
-            const data = JSON.parse(message.data);
-            // checkVideo();
-            console.log('data====', data);
-            if (data.type === "students") {
-                setParticipants(data.students);
-                try{
-                    setEnableHandRaise(data.allowHandRaise);
-                }catch (e)
-                {
-
-                }
-
-            }
-            if (data.type === 'streams') {
-                let streams = [...currentStreams];
-                data.streams.forEach(value => {
-                    if (!streams.includes(value.toString())) {
-                        console.log('push');
-                        streams.push(value.toString());
-                        setCurrentStreams(streams);
-                    }
-                });
-                setAudioStreams(data.streams);
-            }
-            if (data.type === 'mainStream') {
-                setMainStreamId(data.stream);
-                loadPlayer(data.stream);
-            }
-            // if (data.type === 'micAllowed') {
-            //     if (available) {
-            //         setMic(false);
-            //         setMicAllowed(true);
-            //
-            //         setRaisedHandState(false);
-            //
-            //     }
-            //     // if (!available) {
-            //     //     initializeAudioStream();
-            //     // }
-            //
-            // }
-            // if (data.type === 'micDisallowed') {
-            //     setMic(false);
-            //     setMicAllowed(false);
-            //     // removeStream();
-            //
-            // }
-            if (data.command === 'broadcastStream') {
-                console.log(data, streamId, data.userId, userId);
-
-                if (!(data.userId.toString() === userId)) {
-                    setAudioStreams([...audioStreams, data.streamId]);
-                }
-
-            }
+    }
 
 
-        }
-    });
-
-    // function removeStream() {
-    //     setMic(false);
-    //     mediaStream.getAudioTracks()[0].enabled = false;
-    //     ovenLivekit.stopStreaming();
-    // }
 
     function initializeAudioStream() {
-        console.log('connecting',connecting,streamId);
-        if(connecting===false){
+        console.log('connectings', connecting,available, streamId);
+        if (connecting === false && available===false ) {
             if (streamId !== "") {
                 try {
 
                     ovenLivekit.getUserMedia({
-                        audio: {sampleSize:8},
+                        audio: {sampleSize: 8},
                         video: true
                     }).then(function (stream) {
                         setMediaStream(stream);
@@ -492,7 +448,7 @@ function Main() {
                     });
                 } catch (e) {
                     console.log(e);
-setConnecting(false);
+                    setConnecting(false);
                 }
                 setConnecting(false);
             }
@@ -518,11 +474,9 @@ setConnecting(false);
 
     }, [player])
 
-    useEffect(() => {
-
-    }, [audioStreamMap])
-
     function loadPlayer(stream) {
+
+        console.log('loadoplayer', stream);
         const videoPlayer = OvenPlayer.create('mainStream', {
             sources: [
                 {
@@ -565,7 +519,6 @@ setConnecting(false);
             }
 
         })
-
         setPlayer(videoPlayer);
         // setPlayer(OvenPlayer.create('mainStream', {
         //     sources: [
@@ -722,11 +675,10 @@ setConnecting(false);
                 }
             }
 
-            if(streaming===false)
-            {
+            if (streaming === false) {
                 setMic(false);
                 disableAudioStream();
-                sendMuteUnmuteMsg(false);
+                // sendMuteUnmuteMsg(false);
             }
 
         } catch (e) {
@@ -875,10 +827,10 @@ setConnecting(false);
 
     const onMainModalClose = () => {
         // initializeAudioStream();
-        connect();
+        // connect();
     };
 
-    console.log('moduleSetting', moduleSetting);
+    // console.log('moduleSetting', moduleSetting);
     return (
         <div className="App">
             {
@@ -938,7 +890,7 @@ setConnecting(false);
                                     }
                                     <Button onClick={() => { muteUnmuteMic() }}>
                                         {
-                                            (micAllowed===false) ? <MicOffIcon sx={{color: "#cccccc7a"}}/> :
+                                            (micAllowed === false) ? <MicOffIcon sx={{color: "#cccccc7a"}}/> :
                                                 mic ?
                                                     <MicIcon sx={{color: '#fff'}}/>
                                                     :
