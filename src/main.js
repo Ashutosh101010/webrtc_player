@@ -83,8 +83,6 @@ function Main() {
     const [enabledHandRaise, setEnableHandRaise] = useState(false);
     const workerRef = useRef(null);
 
-    console.log('socketNetworkError', socketNetworkError);
-
     useEffect(() => {
         workerRef.current = new Worker(new URL('./websocketworker.jsx', import.meta.url));
 
