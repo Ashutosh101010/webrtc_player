@@ -11,7 +11,8 @@ import {
     DialogTitle,
     Grid,
     Menu,
-    MenuItem
+    MenuItem,
+    Snackbar
 } from "@mui/material";
 import OvenLiveKit from 'ovenlivekit'
 import { useLocation, useParams } from "react-router-dom";
@@ -71,11 +72,18 @@ function Main() {
     const [participants, setParticipants] = useState([]);
     // const [roomPing, setRoomPing] = useState(Date.now());
 
-    const [socketNetworkError, setSocketNetworkError] = useState(false);
+    const [socketNetworkError, setSocketNetworkError] = useState({
+        open: false,
+        vertical: 'top',
+        horizontal: 'center',
+      });
+      const { vertical, horizontal, open } = socketNetworkError;
     const [streaming, setStreaming] = useState(false);
     const [connecting, setConnecting] = useState(false);
     const [enabledHandRaise, setEnableHandRaise] = useState(false);
     const workerRef = useRef(null);
+
+    console.log('socketNetworkError', socketNetworkError);
 
     useEffect(() => {
         workerRef.current = new Worker(new URL('./websocketworker.jsx', import.meta.url));
@@ -99,7 +107,11 @@ function Main() {
                 handleWebsocketMessage(message.data);
             }
             if (message.type === 'websocketError') {
-                setSocketNetworkError(message.data);
+                setSocketNetworkError({
+                    open: message.data,
+                    vertical: 'top',
+                    horizontal: 'center',
+                  });
 
                 setAvailable(false);
                 if(message.data)
@@ -986,7 +998,13 @@ function Main() {
 
                 </>
             }
-            <Dialog
+             <Snackbar
+        anchorOrigin={{ vertical, horizontal }}
+        open={open}
+        message={<Box sx={{textAlign: "left"}}><h4 style={{margin: 0}}>Your network connection is unstable</h4><p>Trying to Reconnect</p></Box>}
+        key={vertical + horizontal}
+      />
+            {/* <Dialog
                 sx={{
                     "& .MuiDialog-container": {
                         "& .MuiPaper-root": {
@@ -1011,7 +1029,7 @@ function Main() {
                         </DialogContentText>
                     </DialogContent>
                 </Box>
-            </Dialog>
+            </Dialog> */}
         </div>
     );
 }
