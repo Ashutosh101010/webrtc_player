@@ -1,6 +1,6 @@
 import './App.css';
 import OvenPlayer from 'ovenplayer';
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import {
     Backdrop,
     Box,
@@ -15,7 +15,7 @@ import {
     Snackbar
 } from "@mui/material";
 import OvenLiveKit from 'ovenlivekit'
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { Pause } from '@mui/icons-material';
 import PanToolIcon from '@mui/icons-material/PanTool';
@@ -28,6 +28,8 @@ import { Circle } from "styled-spinkit";
 import MainModal from './MainModal';
 import axios from 'axios';
 import ErrorModal from './ErrorModal';
+import Audio from "./audio";
+
 
 
 var React = require('react');
@@ -37,11 +39,12 @@ var React = require('react');
 const STUDENT_DETAIL_URL = "https://prodapi.classiolabs.com/student/fetch-details";
 const FETCH_INSTITUTE_URL = "https://prodapi.classiolabs.com/getMetaData/fetch-institute"
 
-function Main() {
+export default function Main(){
     const [player, setPlayer] = useState();
     const {liveId, userId} = useParams();
     const location = useLocation();
-    const token = location.search.split("?token=").join('');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const token = searchParams.get('token');
     const [roomSocketUrl, setRoomSocketUrl] = useState("")
     const [micAllowed, setMicAllowed] = useState(false);
     const [audioStreams, setAudioStreams] = useState([]);
@@ -62,11 +65,12 @@ function Main() {
     const [currentStreams, setCurrentStreams] = useState([]);
     const [available, setAvailable] = useState(false);
     const playerQuality = [
-        "Auto", "4k", "1080p", "720p", "480p", "360p", "240p"
+        "Auto", "720p", "480p", "360p", "240p"
     ]
     const [selectedQuality, setSelectedQuality] = useState("Auto");
     const [pause, setPause] = useState(false);
     const [instituteList, setInstituteList] = useState([]);
+    const [allowStudentListen,setAllowStudentListen]=useState(true);
     const moduleSetting = instituteList?.institute?.instituteModuleSetting;
 
     const [participants, setParticipants] = useState([]);
@@ -82,7 +86,7 @@ function Main() {
     const [connecting, setConnecting] = useState(false);
     const [enabledHandRaise, setEnableHandRaise] = useState(false);
     const workerRef = useRef(null);
-
+    const audioRef=useRef(null);
     useEffect(() => {
         workerRef.current = new Worker(new URL('./websocketworker.jsx', import.meta.url));
 
@@ -136,6 +140,7 @@ function Main() {
     }
 
     useEffect(() => {
+
         if (mediaStream !== undefined) {
             const audioContext = new AudioContext();
             const analyser = audioContext.createAnalyser();
@@ -162,38 +167,39 @@ function Main() {
         }
 
     }, [mediaStream])
-    useEffect(() => {
-        if (participants.length > 0) {
-            participants.forEach((items) => {
-                if (parseInt(items.userId) === parseInt(userId)) {
-
-
-                    if (micAllowed !== items.micAllow) {
-                        setMicAllowed(items.micAllow);
-                    }
-
-                    if (micAllowed !== items.micAllow && items.micAllow === true) {
-                        setRaisedHandState(false);
-                        var msg = {"type": "unRaise"};
-                        sendRoomMessage(JSON.stringify(msg));
-                    }
-
-
-                    if (streamId === "") {
-                        setStreamId(items.audioStreamId);
-                    }
-
-                    if (micAllowed === false) {
-                        setMic(false);
-                    }
-                    else {
-                        setMic(!items.mute);
-                    }
-                }
-            })
-        }
-
-    }, [participants])
+    // useEffect(() => {
+    //     if (participants.length > 0) {
+    //         participants.forEach((items) => {
+    //             console.log('participant',parseInt(items.userId),parseInt(userId),parseInt(items.userId) === parseInt(userId))
+    //             if (parseInt(items.userId) === parseInt(userId)) {
+    //
+    //                 console.log('items',items)
+    //                 if (micAllowed !== items.micAllow) {
+    //                     setMicAllowed(items.micAllow);
+    //                 }
+    //
+    //                 if (micAllowed !== items.micAllow && items.micAllow === true) {
+    //                     setRaisedHandState(false);
+    //                     var msg = {"type": "unRaise"};
+    //                     sendRoomMessage(JSON.stringify(msg));
+    //                 }
+    //
+    //
+    //                 if (streamId === "") {
+    //                     setStreamId(items.audioStreamId);
+    //                 }
+    //
+    //                 if (micAllowed === false) {
+    //                     setMic(false);
+    //                 }
+    //                 else {
+    //                     setMic(!items.mute);
+    //                 }
+    //             }
+    //         })
+    //     }
+    //
+    // }, [participants])
 
 
     useEffect(() => {
@@ -217,16 +223,27 @@ function Main() {
         checkPlayerError();
         StudentFetchDetail();
         getInstituteDetail();
+        try{
+            const script = document.createElement("script");
+
+            script.src = "janus.js";
+            script.async = false;
+
+            document.body.appendChild(script);
+        }catch (e)
+        {
+            console.log('screrror',e);
+        }
 
     }, [])
 
 
     function sendPing() {
         console.log('ping');
-        if (!socketNetworkError) {
+        // if (!socketNetworkError) {
             var object = {"type": "ping"};
             sendRoomMessage(JSON.stringify(object));
-        }
+        // }
 
     }
 
@@ -306,74 +323,104 @@ function Main() {
         }
     }
 
-    let ovenLivekit = OvenLiveKit.create({
-        callbacks: {
-            error: function (error) {
-                console.log("stream error", error);
-                // setStreaming(false);
-                // setMic(false);
-                setConnecting(false);
-                setAvailable(false);
-            },
-            connected: function (event) {
-                // console.log("event", event);
-                // ovenLivekit.inputStream.getAudioTracks()[0].enabled;
-                // setStreaming(true);
-                setAvailable(true);
-            },
-            connectionClosed: function (type, event) {
-                console.log("stream close", type, event);
-                // setStreaming(false);
-                // setMic(false);
-                // initializeAudioStream();
-                setAvailable(false);
-            },
-            iceStateChange: function (state) {
-                console.log("stream state", state);
-                try {
-                    if (state === 'connected') {
-                        // addStream();
-                        setAvailable(true);
-                        setConnecting(false);
-                        // setMicAllowed(true);
-                        setRaisedHandState(false);
-                        setStreaming(true);
-                    }
-                    else if (state === 'closed' || state === 'failed' || state === 'disconnected') {
-                        console.log("stream failed");
-                        setAvailable(false);
-                        // initializeAudioStream();
-                        setStreaming(false);
-                        setConnecting(false);
-                        setMic(false);
-                        // checkAudioStream();
-                    }
-                } catch (e) {
-                    console.log("stream",e);
-                    setAvailable(false);
-                    setStreaming(false);
-                    setConnecting(false);
-                    setMic(false);
-
-                }
-            }
-        }
-    });
+    // let ovenLivekit = OvenLiveKit.create({
+    //     callbacks: {
+    //         error: function (error) {
+    //             console.log("stream error", error);
+    //             // setStreaming(false);
+    //             // setMic(false);
+    //             setConnecting(false);
+    //             setAvailable(false);
+    //         },
+    //         connected: function (event) {
+    //             // console.log("event", event);
+    //             // ovenLivekit.inputStream.getAudioTracks()[0].enabled;
+    //             // setStreaming(true);
+    //             setAvailable(true);
+    //         },
+    //         connectionClosed: function (type, event) {
+    //             console.log("stream close", type, event);
+    //             // setStreaming(false);
+    //             // setMic(false);
+    //             // initializeAudioStream();
+    //             setAvailable(false);
+    //         },
+    //         iceStateChange: function (state) {
+    //             console.log("stream state", state);
+    //             try {
+    //                 if (state === 'connected') {
+    //                     // addStream();
+    //                     setAvailable(true);
+    //                     setConnecting(false);
+    //                     // setMicAllowed(true);
+    //                     setRaisedHandState(false);
+    //                     setStreaming(true);
+    //                 }
+    //                 else if (state === 'closed' || state === 'failed' || state === 'disconnected') {
+    //                     console.log("stream failed");
+    //                     setAvailable(false);
+    //                     // initializeAudioStream();
+    //                     setStreaming(false);
+    //                     setConnecting(false);
+    //                     setMic(false);
+    //                     // checkAudioStream();
+    //                 }
+    //             } catch (e) {
+    //                 console.log("stream",e);
+    //                 setAvailable(false);
+    //                 setStreaming(false);
+    //                 setConnecting(false);
+    //                 setMic(false);
+    //
+    //             }
+    //         }
+    //     }
+    // });
 
 
     function handleWebsocketMessage(data) {
         checkVideo();
         sendPing();
 
-        if (data.type === "students") {
-            setParticipants(data.students);
-            try {
-                setEnableHandRaise(data.allowHandRaise);
-            } catch (e) {
+        if(data.userId!=null)
+        {
+            try{
+                if (micAllowed !== data.micAllow) {
+                    setMicAllowed(data.micAllow);
+
+                }
+
+                if (micAllowed !== data.micAllow && data.micAllow === true) {
+                    setRaisedHandState(false);
+                    var msg = {"type": "unRaise"};
+                    sendRoomMessage(JSON.stringify(msg));
+                }
+
+
+                if (streamId === "") {
+                    setStreamId(data.audioStreamId);
+                }
+
+                if (micAllowed === false) {
+                    setMic(false);
+                }
+                else {
+                    setMic(!data.mute);
+                }
+            }catch (e)
+            {
 
             }
-
         }
+        // if (data.type === "students") {
+        //     setParticipants(data.students);
+        //     try {
+        //         setEnableHandRaise(data.allowHandRaise);
+        //     } catch (e) {
+        //
+        //     }
+        //
+        // }
         if (data.type === 'streams') {
             let streams = [...currentStreams];
             data.streams.forEach(value => {
@@ -389,16 +436,14 @@ function Main() {
             let streamId = parseInt(data.stream);
             setMainStreamId(streamId);
             loadPlayer(streamId);
-            checkAudioStream();
+            // checkAudioStream();
 
         }
         if (data.type === 'micAllowed') {
             if (available) {
                 setMic(false);
                 setMicAllowed(true);
-
                 setRaisedHandState(false);
-
             }
 
 
@@ -421,50 +466,50 @@ function Main() {
 
     }
 
-    function checkAudioStream()
-    {
-        if (!available && !connecting && micAllowed) {
-            ovenLivekit.remove();
-            // initializeAudioStream();
-            setTimeout(initializeAudioStream(),4000);
-        }
-    }
+    // function checkAudioStream()
+    // {
+    //     if (!available && !connecting && micAllowed) {
+    //         ovenLivekit.remove();
+    //         // initializeAudioStream();
+    //         setTimeout(initializeAudioStream(),4000);
+    //     }
+    // }
 
 
 
-    function initializeAudioStream() {
-        console.log('connectings', connecting,available, streamId);
-        if (connecting === false && available===false ) {
-            if (streamId !== "") {
-                try {
-
-                    ovenLivekit.getUserMedia({
-                        audio: {sampleSize: 8},
-                        video: true
-                    }).then(function (stream) {
-                        setMediaStream(stream);
-                        setConnecting(true);
-                        ovenLivekit.startStreaming('wss://audio.classiolabs.com/app/' + streamId + '?direction=send&transport=tcp');
-
-                        stream.getVideoTracks().forEach(value => {
-                            value.enabled = false;
-                        })
-                        // stream.getAudioTracks().forEach((device)=>{
-                        //     device.enabled=false;
-                        // })
-
-                        // addStream();
-
-                    });
-                } catch (e) {
-                    console.log(e);
-                    setConnecting(false);
-                }
-                setConnecting(false);
-            }
-        }
-
-    }
+    // function initializeAudioStream() {
+    //     console.log('connectings', connecting,available, streamId);
+    //     if (connecting === false && available===false ) {
+    //         if (streamId !== "") {
+    //             try {
+    //
+    //                 ovenLivekit.getUserMedia({
+    //                     audio: {sampleSize: 8},
+    //                     video: true
+    //                 }).then(function (stream) {
+    //                     setMediaStream(stream);
+    //                     setConnecting(true);
+    //                     ovenLivekit.startStreaming('wss://audio.classiolabs.com/app/' + streamId + '?direction=send&transport=tcp');
+    //
+    //                     stream.getVideoTracks().forEach(value => {
+    //                         value.enabled = false;
+    //                     })
+    //                     // stream.getAudioTracks().forEach((device)=>{
+    //                     //     device.enabled=false;
+    //                     // })
+    //
+    //                     // addStream();
+    //
+    //                 });
+    //             } catch (e) {
+    //                 console.log(e);
+    //                 setConnecting(false);
+    //             }
+    //             setConnecting(false);
+    //         }
+    //     }
+    //
+    // }
 
     function fetchMainStream() {
         var msg = {"type": "fetchMainStream"};
@@ -495,7 +540,7 @@ function Main() {
                     // Set the type to 'webrtc'
                     type: 'webrtc',
                     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.classiolabs.com/app/' + stream + '/abr'
+                    file: 'wss://stream.classiolabs.com/live/' + stream + '/abr'
                 },
 
             ],
@@ -518,14 +563,17 @@ function Main() {
                 setPlayPause(false)
 
             }
+            toggleAudioPlayerMute(muteUnmutes);
 
         })
         videoPlayer.on('mute', function (data) {
             if (data?.mute === true) {
                 setMuteUnmutes(true)
+                toggleAudioPlayerMute(true);
             }
             else {
                 setMuteUnmutes(false)
+                toggleAudioPlayerMute(false);
             }
 
         })
@@ -557,6 +605,20 @@ function Main() {
 
     }
 
+    function toggleAudioPlayerMute(muteUnmute)
+    {
+        try{
+            if(allowStudentListen)
+            {
+            audioRef.current.toggleMuteUnmute(muteUnmute);
+            }else{
+                audioRef.current.toggleMuteUnmute(false);
+            }
+        }catch (e)
+        {
+
+        }
+    }
     function raiseHand() {
         let raised = raisedHandState;
 
@@ -699,39 +761,41 @@ function Main() {
 
 
     function enableAudioStream() {
-        try {
-            if (mediaStream !== undefined) {
-
-                mediaStream.getAudioTracks().forEach((device) => {
-                    try {
-                        device.enabled = true;
-                    } catch (e) {
-                        console.log('error', e);
-                    }
-                })
-            }
-        } catch (e) {
-            console.log('error', e);
-
-        }
+        // try {
+        //     if (mediaStream !== undefined) {
+        //
+        //         mediaStream.getAudioTracks().forEach((device) => {
+        //             try {
+        //                 device.enabled = true;
+        //             } catch (e) {
+        //                 console.log('error', e);
+        //             }
+        //         })
+        //     }
+        // } catch (e) {
+        //     console.log('error', e);
+        //
+        // }
+        audioRef.current.toggleAudio(true);
     }
 
     function disableAudioStream() {
-        try {
-            if (mediaStream !== undefined) {
-                mediaStream.getAudioTracks().forEach((device) => {
-                    try {
-                        device.enabled = false;
-                    } catch (e) {
-                        console.log('error', e);
+        // try {
+        //     if (mediaStream !== undefined) {
+        //         mediaStream.getAudioTracks().forEach((device) => {
+        //             try {
+        //                 device.enabled = false;
+        //             } catch (e) {
+        //                 console.log('error', e);
+        //
+        //             }
+        //         })
+        //     }
+        // } catch (e) {
+        //     console.log('error', e);
 
-                    }
-                })
-            }
-        } catch (e) {
-            console.log('error', e);
-
-        }
+        // }
+        audioRef.current.toggleAudio(false);
     }
 
     function sendMuteUnmuteMsg(val) {
@@ -754,12 +818,14 @@ function Main() {
                 // mediaStream.getAudioTracks()[0].enabled = false;
 
                 sendMuteUnmuteMsg(false);
+
             }
             else {
                 setMic(true);
                 // mediaStream.getAudioTracks()[0].enabled = true;
                 enableAudioStream();
                 sendMuteUnmuteMsg(true);
+
             }
         }
 
@@ -769,6 +835,7 @@ function Main() {
     const handlePlay = () => {
         player?.play();
         setPause(false);
+
     }
     const handlePouse = () => {
         player?.pause();
@@ -776,29 +843,31 @@ function Main() {
     }
     const handleVolumeOn = () => {
         player?.setMute(false);
-        try {
-            Array.from(audioStreamMap.keys()).map(key => {
-                let value = audioStreamMap.get(parseInt(key));
-                if (value !== undefined && value !== '' && value.getState() !== 'playing') {
-                    value.setMute(false);
-                }
-            });
-        } catch (e) {
-
-        }
+        // try {
+        //     // Array.from(audioStreamMap.keys()).map(key => {
+        //     //     let value = audioStreamMap.get(parseInt(key));
+        //     //     if (value !== undefined && value !== '' && value.getState() !== 'playing') {
+        //     //         value.setMute(false);
+        //     //     }
+        //     // });
+        // } catch (e) {
+        //
+        // }
+        toggleAudioPlayerMute(false);
     }
     const handleVolumeOff = () => {
         player?.setMute(true);
-        try {
-            Array.from(audioStreamMap.keys()).map(key => {
-                let value = audioStreamMap.get(parseInt(key));
-                if (value !== undefined && value !== '' && value.getState() !== 'playing') {
-                    value.setMute(true);
-                }
-            });
-        } catch (e) {
-
-        }
+        // try {
+        //     Array.from(audioStreamMap.keys()).map(key => {
+        //         let value = audioStreamMap.get(parseInt(key));
+        //         if (value !== undefined && value !== '' && value.getState() !== 'playing') {
+        //             value.setMute(true);
+        //         }
+        //     });
+        // } catch (e) {
+        //
+        // }
+        toggleAudioPlayerMute(true);
     }
     const handleMenu = (event) => {
         setMenuDevice(event.currentTarget);
@@ -811,7 +880,12 @@ function Main() {
         // console.log('quality',player.getQualityLevels());
         setSettingMenu(event.currentTarget);
     }
-    const handleSettingClose = () => {
+     function handleStream(started)
+    {
+        console.log('handle stream',started)
+        setStreaming(started);
+
+    }    const handleSettingClose = () => {
         setSettingMenu(null)
     }
     const handleSettingMenu = (value, option) => {
@@ -843,36 +917,41 @@ function Main() {
     // console.log('moduleSetting', moduleSetting);
     return (
         <div className="App">
+            {/*<Helmet>*/}
+            {/*    <script src="janus.js"></script>*/}
+            {/*</Helmet>*/}
             {
-                authUser?.errorCode === 0 ? <>
+              authUser!=='' &&   authUser?.errorCode === 0 ?
+                    <>
                     <MainModal fetchMainStream={fetchMainStream} onClose={onMainModalClose}/>
-                    <Grid container>
-                        {
-                            Array.from(audioStreamMap.keys()).map((key, index) => {
-                                if (audioStreamMap.get(parseInt(key)) === '') {
-                                    return <Grid item key={index}> <Box
-                                        sx={{
-                                            width: 0,
-                                            height: 0,
-                                            backgroundColor: 'primary.dark',
-                                            '&:hover': {
-                                                backgroundColor: 'primary.main',
-                                                opacity: [0.9, 0.8, 0.7],
-                                            },
-                                        }}
-                                    >
-                                        {/*<div id={'audio' + key}></div>*/}
-                                        {React.createElement("div", {id: 'audio' + parseInt(key)})}
+                    {/*<Grid container>*/}
+                    {/*    {*/}
+                    {/*        Array.from(audioStreamMap.keys()).map((key, index) => {*/}
+                    {/*            if (audioStreamMap.get(parseInt(key)) === '') {*/}
+                    {/*                return <Grid item key={index}> <Box*/}
+                    {/*                    sx={{*/}
+                    {/*                        width: 0,*/}
+                    {/*                        height: 0,*/}
+                    {/*                        backgroundColor: 'primary.dark',*/}
+                    {/*                        '&:hover': {*/}
+                    {/*                            backgroundColor: 'primary.main',*/}
+                    {/*                            opacity: [0.9, 0.8, 0.7],*/}
+                    {/*                        },*/}
+                    {/*                    }}*/}
+                    {/*                >*/}
+                    {/*                    /!*<div id={'audio' + key}></div>*!/*/}
+                    {/*                    {React.createElement("div", {id: 'audio' + parseInt(key)})}*/}
 
-                                    </Box>
-                                    </Grid>
+                    {/*                </Box>*/}
+                    {/*                </Grid>*/}
 
 
-                                }
+                    {/*            }*/}
 
-                            })
-                        }
-                    </Grid>
+                    {/*        })*/}
+                    {/*    }*/}
+                    {/*</Grid>*/}
+                    {mainStreamId!==null && mainStreamId!==undefined && <div style={{width:0,height:0,visibility:'hidden'}}><Audio streamId={mainStreamId} userId={userId} ref={audioRef} handleStream={handleStream}/></div>}
                     <Grid item>
                         <Box height="100vh" display="flex" flexDirection="column" sx={{backgroundColor: "black"}}>
                             <Box onClick={handleShowHide}>
@@ -984,17 +1063,17 @@ function Main() {
                     {/*        onClick={() => muteUnmute()}>{player != undefined && player.getMute() ? "UnMute" : "Mute"}</Button>*/}
                     {/*<Button variant="contained" onClick={() => muteUnmuteMic()}>{mic ? "micon" : "micoff"}</Button>*/}
                     {/*<Button variant="contained" onClick={() => raiseHand()}>raise doubt</Button>*/}
-                </> : <>
-                    {
-                        isLoading ? <Backdrop
-                            sx={{color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1}}
-                            open={isLoading}
-                        >
-                            <Circle color={"#fafafa"} size={50}/>
-                        </Backdrop> : <ErrorModal/>
-                    }
+                {/*</div> : <>*/}
+                        {
+                            isLoading ? <Backdrop
+                                sx={{color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1}}
+                                open={isLoading}
+                            >
+                                <Circle color={"#fafafa"} size={50}/>
+                            </Backdrop> : <div></div>
+                        }
 
-                </>
+                    </>:<ErrorModal/>
             }
              <Snackbar
         anchorOrigin={{ vertical, horizontal }}
@@ -1030,7 +1109,5 @@ function Main() {
             </Dialog> */}
         </div>
     );
-}
-
-export default Main;
+};
 
