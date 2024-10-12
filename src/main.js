@@ -3,12 +3,6 @@ import OvenPlayer from 'ovenplayer';
 import { forwardRef, useEffect, useRef, useState } from "react";
 import {
     Backdrop,
-    Box,
-    Button,
-    Dialog,
-    DialogContent,
-    DialogContentText,
-    DialogTitle,
     Grid,
     Menu,
     MenuItem,
@@ -167,60 +161,13 @@ export default function Main(){
         }
 
     }, [mediaStream])
-    // useEffect(() => {
-    //     if (participants.length > 0) {
-    //         participants.forEach((items) => {
-    //             console.log('participant',parseInt(items.userId),parseInt(userId),parseInt(items.userId) === parseInt(userId))
-    //             if (parseInt(items.userId) === parseInt(userId)) {
-    //
-    //                 console.log('items',items)
-    //                 if (micAllowed !== items.micAllow) {
-    //                     setMicAllowed(items.micAllow);
-    //                 }
-    //
-    //                 if (micAllowed !== items.micAllow && items.micAllow === true) {
-    //                     setRaisedHandState(false);
-    //                     var msg = {"type": "unRaise"};
-    //                     sendRoomMessage(JSON.stringify(msg));
-    //                 }
-    //
-    //
-    //                 if (streamId === "") {
-    //                     setStreamId(items.audioStreamId);
-    //                 }
-    //
-    //                 if (micAllowed === false) {
-    //                     setMic(false);
-    //                 }
-    //                 else {
-    //                     setMic(!items.mute);
-    //                 }
-    //             }
-    //         })
-    //     }
-    //
-    // }, [participants])
+
+
+
 
 
     useEffect(() => {
-        // if (!available && streamId !== "" && socketNetworkError !== true) {
-        //     initializeAudioStream();
-        // }
-    }, [streamId])
-    // useEffect(() => {
-    //
-    //
-    //     // if (streaming !== true && roomSocketUrl !== "") {
-    //     //     console.log("useeffect stream", streaming, roomSocketUrl);
-    //     //     initializeAudioStream();
-    //     // }
-    //     const timer = setTimeout(() => ticking && setCount(count + 1), 2e3);
-    //     return () => clearTimeout(timer);
-    // }, [count, ticking]);
-
-
-    useEffect(() => {
-        checkPlayerError();
+        // checkPlayerError();
         StudentFetchDetail();
         getInstituteDetail();
         try{
@@ -299,83 +246,9 @@ export default function Main(){
             console.log(e);
         }
 
-        // try {
-        //     if (!available && retry < maxRetry) {
-        //         initializeAudioStream();
-        //         let tempRetry = retry;
-        //         setRetry(tempRetry++);
-        //     }
-        // } catch (e) {
-        //
-        // }
+
     }
 
-    function checkPlayerError() {
-        try {
-            Array.from(audioStreamMap.keys()).map(key => {
-                let value = audioStreamMap.get(parseInt(key));
-                if (value !== undefined && value !== '' && value.getState() !== 'playing') {
-                    value.play();
-                }
-            });
-        } catch (e) {
-
-        }
-    }
-
-    // let ovenLivekit = OvenLiveKit.create({
-    //     callbacks: {
-    //         error: function (error) {
-    //             console.log("stream error", error);
-    //             // setStreaming(false);
-    //             // setMic(false);
-    //             setConnecting(false);
-    //             setAvailable(false);
-    //         },
-    //         connected: function (event) {
-    //             // console.log("event", event);
-    //             // ovenLivekit.inputStream.getAudioTracks()[0].enabled;
-    //             // setStreaming(true);
-    //             setAvailable(true);
-    //         },
-    //         connectionClosed: function (type, event) {
-    //             console.log("stream close", type, event);
-    //             // setStreaming(false);
-    //             // setMic(false);
-    //             // initializeAudioStream();
-    //             setAvailable(false);
-    //         },
-    //         iceStateChange: function (state) {
-    //             console.log("stream state", state);
-    //             try {
-    //                 if (state === 'connected') {
-    //                     // addStream();
-    //                     setAvailable(true);
-    //                     setConnecting(false);
-    //                     // setMicAllowed(true);
-    //                     setRaisedHandState(false);
-    //                     setStreaming(true);
-    //                 }
-    //                 else if (state === 'closed' || state === 'failed' || state === 'disconnected') {
-    //                     console.log("stream failed");
-    //                     setAvailable(false);
-    //                     // initializeAudioStream();
-    //                     setStreaming(false);
-    //                     setConnecting(false);
-    //                     setMic(false);
-    //                     // checkAudioStream();
-    //                 }
-    //             } catch (e) {
-    //                 console.log("stream",e);
-    //                 setAvailable(false);
-    //                 setStreaming(false);
-    //                 setConnecting(false);
-    //                 setMic(false);
-    //
-    //             }
-    //         }
-    //     }
-    // });
 
 
     function handleWebsocketMessage(data) {
@@ -387,7 +260,16 @@ export default function Main(){
             try{
                 if (micAllowed !== data.micAllow) {
                     setMicAllowed(data.micAllow);
+                    setRaisedHandState(false);
 
+                }
+                if(enabledHandRaise!==data.allowHandRaise)
+                {
+                    setEnableHandRaise(data.allowHandRaise);
+                    if(!data.allowHandRaise)
+                    {
+                        setRaisedHandState(false);
+                    }
                 }
 
                 if (micAllowed !== data.micAllow && data.micAllow === true) {
@@ -620,12 +502,14 @@ export default function Main(){
         }
     }
     function raiseHand() {
-        let raised = raisedHandState;
+        if(enabledHandRaise){
+            let raised = raisedHandState;
 
-        setRaisedHandState(!raised)
+            setRaisedHandState(!raised)
 
-        var msg = {"type": raised == true ? "unRaise" : "raiseHand"};
-        sendRoomMessage(JSON.stringify(msg));
+            var msg = {"type": raised == true ? "unRaise" : "raiseHand"};
+            sendRoomMessage(JSON.stringify(msg));
+        }
     }
 
     function addStream() {
