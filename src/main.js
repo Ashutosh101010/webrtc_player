@@ -20,17 +20,16 @@ import ErrorModal from './ErrorModal';
 
 var React = require('react');
 
-const BASE_URL="https://prodapi.classiolabs.com";
-const BASE_URL_SOCKET="wss://prodapi.classiolabs.com";
-const STUDENT_DETAIL_URL = BASE_URL+"/student/fetch-details";
-const FETCH_INSTITUTE_URL = BASE_URL+"/getMetaData/fetch-institute";
+const STUDENT_DETAIL_URL = "https://api.softkitesinfo.com/student/fetch-details";
 
 function Main() {
     const [player, setPlayer] = useState();
-    const { liveId, userId } = useParams();
+    const {liveId, userId} = useParams();
     const location = useLocation();
     const token = location.search.split("?token=").join('');
-    const [roomSocketUrl, setRoomSocketUrl] = useState(BASE_URL_SOCKET+"/ws/room/" + liveId + "/" + userId + "/false")
+    const [roomSocketUrl, setRoomSocketUrl] = useState("wss://api.softkitesinfo.com/ws/room/" + liveId + "/" + userId + "/false")
+    // const [roomSocketUrl, setRoomSocketUrl] = useState("ws://192.168.1.13:6060/room/" + liveId + "/" + userId +
+    // "/false")
     const [micAllowed, setMicAllowed] = useState(false);
     const [raisedHand, setRaisedHand] = useState(false);
     const [audioStreams, setAudioStreams] = useState([]);
@@ -51,43 +50,21 @@ function Main() {
     const [audioPlayerRefresh, setAudioPlayerRefresh] = useState(false);
     const [audioStreamMap, setAudioStreamMap] = useState(new Map());
     const [currentStreams, setCurrentStreams] = useState([]);
-    const [available, setAvailable] = useState(false);
+    const [available,setAvailable]=useState(false);
     const playerQuality = [
-        "Auto", "4k", "1080p", "720p", "480p", "360p"
+        "4k","1080p", "720p", "480p", "360p"
     ]
-    const [selectedQuality, setSelectedQuality] = useState("Auto");
-    const [pause, setPause] = useState(false);
-    const [instituteList, setInstituteList] = useState([]);
-    const moduleSetting = instituteList?.institute?.instituteModuleSetting;
+    const [selectedQuality, setSelectedQuality] = useState("480p");
 
     useEffect(() => {
 
         checkPlayerError();
-        // const timer = setTimeout(() => checkVideo(), 1000);
+        // const timer = setTimeout(() => checkPlayerError(), 1000);
 
     }, [])
     useEffect(() => {
-        StudentFetchDetail();
-        getInstituteDetail();
+        StudentFetchDetail()
     }, [])
-
-    const getInstituteDetail = async () => {
-
-        try {
-            let response = await axios.get(
-                FETCH_INSTITUTE_URL,
-                {
-                    headers: { "X-Auth": token },
-                    withCredentials: false,
-                }
-            );;
-
-            setInstituteList(response.data)
-        } catch (err) {
-            console.log(err);
-        }
-    }
-
 
     const StudentFetchDetail = async () => {
         setIsLoading(true)
@@ -95,7 +72,7 @@ function Main() {
             const response = await axios.get(
                 STUDENT_DETAIL_URL,
                 {
-                    headers: { "X-Auth": token }
+                    headers: {"X-Auth": token}
                 }
             );
             setAuthUser(response?.data)
@@ -106,22 +83,7 @@ function Main() {
         }
     }
 
-    function checkVideo() {
-        try {
-            if (player.getState() === 'error') {
-                loadPlayer(mainStreamId);
-            }
-            if (player.getState() !== 'playing') {
-                if (!pause) {
-                    player.play();
-                }
-            }
-        } catch (e) {
-            console.log(e);
-        }
-    }
     function checkPlayerError() {
-
         try {
             Array.from(audioStreamMap.keys()).map(key => {
                 let value = audioStreamMap.get(parseInt(key));
@@ -129,7 +91,8 @@ function Main() {
                     value.play();
                 }
             });
-        } catch (e) {
+        }catch (e)
+        {
 
         }
     }
@@ -145,16 +108,17 @@ function Main() {
                 // ovenLivekit.inputStream.getAudioTracks()[0].enabled;
 
 
-
             },
             connectionClosed: function (type, event) {
                 console.log("close", type, event)
             },
             iceStateChange: function (state) {
                 console.log("state", state);
-                if (state === 'connected') {
-                addStream();
-                setAvailable(true);
+                if(state==='connected')
+                {
+
+                    addStream();
+                    setAvailable(true);
                 }
             }
         }
@@ -174,7 +138,6 @@ function Main() {
         ,
         onMessage: (message) => {
             const data = JSON.parse(message.data);
-            checkVideo();
             if (data.type === 'streams') {
                 let streams = [...currentStreams];
                 data.streams.forEach(value => {
@@ -191,7 +154,8 @@ function Main() {
                 loadPlayer(data.stream);
             }
             if (data.type === 'micAllowed') {
-                if (available) {
+                if(available)
+                {
                     setMic(false);
                     setMicAllowed(true);
 
@@ -243,13 +207,13 @@ function Main() {
     }
 
     function fetchMainStream() {
-        var msg = { "type": "fetchMainStream" };
+        var msg = {"type": "fetchMainStream"};
         sendRoomMessage(JSON.stringify(msg));
 
     }
 
     function fetchAudioStreams() {
-        var msg = { "type": "fetchStreams" };
+        var msg = {"type": "fetchStreams"};
         sendRoomMessage(JSON.stringify(msg));
     }
 
@@ -274,29 +238,60 @@ function Main() {
                     // Set the type to 'webrtc'
                     type: 'webrtc',
                     // Set the file to WebRTC Signaling URL with OvenMediaEngine
-                    file: 'wss://stream.classiolabs.com/app/' + stream + '/abr'
-                },
+                    file: 'wss://stream.classiolabs.com/app/' + stream
 
+                },
+                {
+
+                    label: '1080p',
+                    // Set the type to 'webrtc'
+                    type: 'webrtc',
+                    // Set the file to WebRTC Signaling URL with OvenMediaEngine
+                    file: 'wss://stream.classiolabs.com/app/' + stream + "_1080"
+
+                },
+                {
+
+                    label: '720p',
+                    // Set the type to 'webrtc'
+                    type: 'webrtc',
+                    // Set the file to WebRTC Signaling URL with OvenMediaEngine
+                    file: 'wss://stream.classiolabs.com/app/' + stream + "_720"
+
+                },
+                {
+
+                    label: '480p',
+                    // Set the type to 'webrtc'
+                    type: 'webrtc',
+                    // Set the file to WebRTC Signaling URL with OvenMediaEngine
+                    file: 'wss://stream.classiolabs.com/app/' + stream + "_480"
+
+                },
+                {
+
+                    label: '360p',
+                    // Set the type to 'webrtc'
+                    type: 'webrtc',
+                    // Set the file to WebRTC Signaling URL with OvenMediaEngine
+                    file: 'wss://stream.classiolabs.com/app/' + stream + "_360"
+
+                },
             ],
-            mute: false,
             autoStart: true,
             showBigPlayButton: false,
             expandFullScreenUI: false
         });
         videoPlayer.setVolume(100)
         videoPlayer.showControls(false)
-        videoPlayer.setAutoQuality(true);
-        setSelectedQuality('Auto');
-        // videoPlayer.setCurrentSource(3)
+        videoPlayer.setCurrentSource(3)
         // videoPlayer.setMute(false);
         videoPlayer.on('stateChanged', function (data) {
             if (data?.newstate === "playing") {
                 setPlayPause(true)
-
             }
             else {
                 setPlayPause(false)
-
             }
 
         })
@@ -326,44 +321,26 @@ function Main() {
 
         // }));
 
-        try {
-            if (audioStreams.length < 1) {
-                fetchAudioStreams();
-            }
-        } catch (e) {
-
-        }
-
+        fetchAudioStreams();
 
     }
 
     function raiseHand() {
         setRaisedHandState(true)
-        var msg = { "type": "raiseHand" };
+        var msg = {"type": "raiseHand"};
         sendRoomMessage(JSON.stringify(msg));
     }
 
     function addStream() {
-        var msg = { "type": "addStream", "data": streamId }
+        var msg = {"type": "addStream", "data": streamId}
         sendRoomMessage(JSON.stringify(msg));
     }
 
-    // function muteUnmute() {
-    //
-    //     player.setMute(!player.getMute());
-    //     try {
-    //         Array.from(audioStreamMap.keys()).map(key => {
-    //             let value = audioStreamMap.get(parseInt(key));
-    //             if (value !== undefined && value !== '' && value.getState() !== 'playing') {
-    //                 value.play();
-    //             }
-    //         });
-    //     }catch (e)
-    //     {
-    //
-    //     }
-    //
-    // }
+    function muteUnmute() {
+
+        player.setMute(!player.getMute());
+
+    }
 
     useEffect(() => {
         navigator.mediaDevices.enumerateDevices().then(devices => {
@@ -381,62 +358,64 @@ function Main() {
         })
     }, []);
     //
-    // useEffect(() => {
-    //     let tempMap = audioStreamMap.size > 0 ? audioStreamMap : new Map();
-    //     audioStreams.forEach((value, index) => {
-    //         if ((tempMap.get(parseInt(value)) === undefined) && parseInt(value) !== parseInt(streamId)) {
-    //
-    //             tempMap.set(parseInt(value), '');
-    //             setAudioStreamMap(tempMap);
-    //         }
-    //         else if ((tempMap.get(parseInt(value)) !== undefined) && (!audioStreams.includes(value))) {
-    //             tempMap.get(parseInt(value)).remove();
-    //             tempMap.delete(parseInt(value));
-    //             setAudioStreamMap(tempMap);
-    //         }
-    //
-    //     });
-    //     checkPlayerError();
-    //     try{
-    //         Array.from(audioStreamMap.keys()).map((key) => {
-    //                 if (audioStreamMap.get(key) === '') {
-    //                     let tempMap = audioStreamMap;
-    //                     let aplayer = OvenPlayer.create('audio' + key, {
-    //                         sources: [
-    //                             {
-    //
-    //                                 label: 'label_for_webrtc',
-    //                                 // Set the type to 'webrtc'
-    //                                 type: 'webrtc',
-    //                                 // Set the file to WebRTC Signaling URL with OvenMediaEngine
-    //                                 file: 'wss://audio.classiolabs.com/app/' + key
-    //
-    //                             }
-    //                         ], autoStart: true,
-    //
-    //                         webrtcConfig:
-    //                             {
-    //                                 timeoutMaxRetry: 100000,
-    //                                 connectionTimeout: 50000
-    //                             }
-    //
-    //                     });
-    //
-    //                     tempMap.set(parseInt(key), aplayer);
-    //                     setAudioStreamMap(tempMap);
-    //                 }
-    //             }
-    //         );
-    //     }catch (e)
-    //     {
-    //
-    //     }
-    // }, [audioStreams])
+    useEffect(() => {
+        let tempMap = audioStreamMap.size > 0 ? audioStreamMap : new Map();
+        audioStreams.forEach((value, index) => {
+            if ((tempMap.get(parseInt(value)) === undefined) && parseInt(value) !== parseInt(streamId)) {
+
+                tempMap.set(parseInt(value), '');
+                setAudioStreamMap(tempMap);
+            }
+            else if ((tempMap.get(parseInt(value)) !== undefined) && (!audioStreams.includes(value))) {
+                tempMap.get(parseInt(value)).remove();
+                tempMap.delete(parseInt(value));
+                setAudioStreamMap(tempMap);
+            }
+
+        });
+        checkPlayerError();
+        try{
+            Array.from(audioStreamMap.keys()).map((key) => {
+                    if (audioStreamMap.get(key) === '') {
+                        let tempMap = audioStreamMap;
+                        let aplayer = OvenPlayer.create('audio' + key, {
+                            sources: [
+                                {
+
+                                    label: 'label_for_webrtc',
+                                    // Set the type to 'webrtc'
+                                    type: 'webrtc',
+                                    // Set the file to WebRTC Signaling URL with OvenMediaEngine
+                                    file: 'wss://audio.classiolabs.com/app/' + key
+
+                                }
+                            ], autoStart: true,
+
+                            webrtcConfig:
+                                {
+                                    timeoutMaxRetry: 100000,
+                                    connectionTimeout: 50000
+                                }
+
+                        });
+
+                        tempMap.set(parseInt(key), aplayer);
+                        setAudioStreamMap(tempMap);
+                    }
+                }
+            );
+        }catch (e)
+        {
+
+        }
+    }, [audioStreams])
 
 
     useEffect(() => {
-        if (mediaStream !== undefined) {
-            if (mediaStream.getAudioTracks()[0] !== undefined) {
+        if(mediaStream!==undefined)
+        {
+            if(mediaStream.getAudioTracks()[0]!==undefined)
+            {
                 if (mic) {
                     mediaStream.getAudioTracks()[0].enabled = true;
                 }
@@ -463,37 +442,15 @@ function Main() {
 
     const handlePlay = () => {
         player?.play();
-        setPause(false);
     }
     const handlePouse = () => {
         player?.pause();
-        setPause(true);
     }
     const handleVolumeOn = () => {
         player?.setMute(false);
-        try {
-            Array.from(audioStreamMap.keys()).map(key => {
-                let value = audioStreamMap.get(parseInt(key));
-                if (value !== undefined && value !== '' && value.getState() !== 'playing') {
-                    value.setMute(false);
-                }
-            });
-        } catch (e) {
-
-        }
     }
     const handleVolumeOff = () => {
         player?.setMute(true);
-        try {
-            Array.from(audioStreamMap.keys()).map(key => {
-                let value = audioStreamMap.get(parseInt(key));
-                if (value !== undefined && value !== '' && value.getState() !== 'playing') {
-                    value.setMute(true);
-                }
-            });
-        } catch (e) {
-
-        }
     }
     const handleMenu = (event) => {
         setMenuDevice(event.currentTarget);
@@ -503,7 +460,6 @@ function Main() {
         setMenuDevice(null);
     };
     const handleSetting = (event) => {
-        // console.log('quality',player.getQualityLevels());
         setSettingMenu(event.currentTarget);
     }
     const handleSettingClose = () => {
@@ -511,19 +467,7 @@ function Main() {
     }
     const handleSettingMenu = (value, option) => {
         setSelectedQuality(option);
-        // player.setCurrentSource(value)
-        if (option === 'Auto') {
-            player.setAutoQuality(true);
-        }
-        else {
-            player.setAutoQuality(false);
-            player.getQualityLevels().forEach((object, index) => {
-                if (object.label === option) {
-                    player.setCurrentQuality(index);
-                }
-            });
-        }
-
+        player.setCurrentSource(value)
         setSettingMenu(null)
     }
     const handleShowHide = () => {
@@ -534,7 +478,7 @@ function Main() {
         <div className="App">
             {
                 authUser?.errorCode === 0 ? <>
-                    <MainModal fetchMainStream={fetchMainStream} />
+                    <MainModal fetchMainStream={fetchMainStream}/>
                     <Grid container>
                         {
                             Array.from(audioStreamMap.keys()).map((key, index) => {
@@ -551,7 +495,7 @@ function Main() {
                                         }}
                                     >
                                         {/*<div id={'audio' + key}></div>*/}
-                                        {React.createElement("div", { id: 'audio' + parseInt(key) })}
+                                        {React.createElement("div", {id: 'audio' + parseInt(key)})}
 
                                     </Box>
                                     </Grid>
@@ -563,35 +507,35 @@ function Main() {
                         }
                     </Grid>
                     <Grid item>
-                        <Box height="100vh" display="flex" flexDirection="column" sx={{ backgroundColor: "black" }}>
+                        <Box height="100vh" display="flex" flexDirection="column" sx={{backgroundColor: "black"}}>
                             <Box onClick={handleShowHide}>
-                                <div id="mainStream" style={{ position: "relative" }}></div>
+                                <div id="mainStream" style={{position: "relative"}}></div>
                             </Box>
-                            <Box sx={{ position: "absolute", bottom: "0", left: "0", right: "0", paddingBottom: "20px" }}>
-                                <div style={{ display: style ? "block" : "none" }}>
-                                            <Button onClick={() => { raiseHand() }}  disabled={moduleSetting?.raiseHand === true ? false : true}>
-                                                <PanToolIcon sx={{ color: moduleSetting?.raiseHand === false ? "#cccccc7a" : raisedHandState ? "green" : '#cccccc' }} />
-                                            </Button>
+                            <Box sx={{position: "absolute", bottom: "0", left: "0", right: "0", paddingBottom: "20px"}}>
+                                <div style={{display: style ? "block" : "none"}}>
+                                    <Button onClick={() => {raiseHand()}}>
+                                        <PanToolIcon sx={{color: raisedHandState ? "green" : '#cccccc'}}/>
+                                    </Button>
                                     {!playPause ?
-                                        <Button onClick={handlePlay}><PlayArrowIcon sx={{ color: '#cccccc' }} /></Button>
+                                        <Button onClick={handlePlay}><PlayArrowIcon sx={{color: '#cccccc'}}/></Button>
                                         : <Button onClick={handlePouse}>
-                                            <Pause sx={{ color: '#cccccc' }} />
+                                            <Pause sx={{color: '#cccccc'}}/>
                                         </Button>
                                     }
                                     {
                                         muteUnmutes ? <Button onClick={handleVolumeOn}>
-                                            <VolumeOffIcon sx={{ color: '#cccccc' }} />
+                                            <VolumeOffIcon sx={{color: '#cccccc'}}/>
                                         </Button> : <Button onClick={handleVolumeOff}>
-                                            <VolumeUpIcon sx={{ color: '#cccccc' }} />
+                                            <VolumeUpIcon sx={{color: '#cccccc'}}/>
                                         </Button>
                                     }
                                     <Button onClick={() => { muteUnmuteMic() }}>
                                         {
-                                            !micAllowed ? <MicOffIcon sx={{ color: "#cccccc7a" }} /> :
-                                                mic ?
-                                                    <MicIcon sx={{ color: '#cccccc' }} />
-                                                    :
-                                                    <MicOffIcon sx={{ color: '#cccccc' }} />
+                                           !micAllowed? <MicOffIcon sx={{color: "#cccccc7a"}}/>:
+                                            mic ?
+                                                <MicIcon sx={{color: '#cccccc'}}/>
+                                                :
+                                                <MicOffIcon sx={{color:  '#cccccc' }}/>
                                         }
                                     </Button>
                                     {/*{*/}
@@ -629,36 +573,35 @@ function Main() {
                                     {/*        </Button>*/}
                                     {/*        : ""*/}
                                     {/*}*/}
-                                            <Button disabled={moduleSetting?.quality === true ? false : true}>
-                                                <SettingsIcon sx={{ color: moduleSetting?.quality === true ? '#cccccc' : "#cccccc7a" }} onClick={handleSetting} />
-                                                <Menu
-                                                    id="menu-appbar"
-                                                    anchorEl={settingMenu}
-                                                    getContentAnchorEl={null}
-                                                    anchorOrigin={{
-                                                        vertical: 'top',
-                                                        horizontal: 'left',
-                                                    }}
-                                                    transformOrigin={{
-                                                        vertical: 'bottom',
-                                                        horizontal: 'center',
-                                                    }}
-                                                    keepMounted
-                                                    open={Boolean(settingMenu)}
-                                                    onClose={handleSettingClose}
-                                                >
-                                                    {
-                                                        playerQuality?.map((option, i) => {
-                                                            return <Box
-                                                                sx={{ backgroundColor: selectedQuality === option ? 'rgba(25,118,210,0.4)' : 'transparent' }}>
-                                                                <MenuItem key={i}
-                                                                    onClick={() => handleSettingMenu(i, option)}>{option}</MenuItem></Box>
+                                    <Button>
+                                        <SettingsIcon sx={{color: '#cccccc'}} onClick={handleSetting}/>
+                                        <Menu
+                                            id="menu-appbar"
+                                            anchorEl={settingMenu}
+                                            getContentAnchorEl={null}
+                                            anchorOrigin={{
+                                                vertical: 'top',
+                                                horizontal: 'left',
+                                            }}
+                                            transformOrigin={{
+                                                vertical: 'bottom',
+                                                horizontal: 'center',
+                                            }}
+                                            keepMounted
+                                            open={Boolean(settingMenu)}
+                                            onClose={handleSettingClose}
+                                        >
+                                            {
+                                                playerQuality?.map((option, i) => {
+                                                    return <Box
+                                                        sx={{backgroundColor: selectedQuality === option ? 'rgba(25,118,210,0.4)' : 'transparent'}}>
+                                                        <MenuItem key={i}
+                                                                  onClick={() => handleSettingMenu(i, option)}>{option}</MenuItem></Box>
 
-                                                        })
-                                                    }
-                                                </Menu>
-                                            </Button>
-
+                                                })
+                                            }
+                                        </Menu>
+                                    </Button>
                                 </div>
                             </Box>
                         </Box>
@@ -670,12 +613,12 @@ function Main() {
                     {/*<Button variant="contained" onClick={() => raiseHand()}>raise doubt</Button>*/}
                 </> : <>
                     {
-                        isLoading || authUser === '' ? <Backdrop
-                            sx={{ color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+                        isLoading ? <Backdrop
+                            sx={{color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1}}
                             open={isLoading}
                         >
-                            <Circle color={"#fafafa"} size={50} />
-                        </Backdrop> : <ErrorModal />
+                            <Circle color={"#fafafa"} size={50}/>
+                        </Backdrop> : <ErrorModal/>
                     }
                 </>
             }
