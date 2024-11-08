@@ -670,7 +670,7 @@ function Main() {
                     {/*<Button variant="contained" onClick={() => raiseHand()}>raise doubt</Button>*/}
                 </> : <>
                     {
-                        isLoading ? <Backdrop
+                        isLoading || authUser === '' ? <Backdrop
                             sx={{ color: "aliceblue", zIndex: (theme) => theme.zIndex.drawer + 1 }}
                             open={isLoading}
                         >
